@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       d.*,
       c.name as client_name,
       c.business_name as client_business_name,
-      c.rif as client_rif,
+      COALESCE(d.client_rif, c.rif) as client_rif,
       c.phone as client_phone,
       c.address as client_address
     FROM documents d
@@ -66,6 +66,7 @@ export async function POST(req: Request) {
     const {
       doc_type, // 'FORMA_LIBRE' o 'RECIBO'
       client_id,
+      client_rif,
       issue_date,
       due_date,
       currency = 'USD',
@@ -149,17 +150,17 @@ export async function POST(req: Request) {
     const docId = `doc_${doc_type.toLowerCase()}_${nextDocNum}`;
     const insertDoc = db.prepare(`
       INSERT INTO documents (
-        id, doc_type, doc_number, client_id, issue_date, due_date,
+        id, doc_type, doc_number, client_id, client_rif, issue_date, due_date,
         status, payment_status, currency, total_amount_currency,
         rate_type_applied, applied_rate, bcv_rate_at_issue,
         subtotal_bs, iva_rate, iva_amount_bs, total_bs_applied,
         base_bs_bcv, base_usd_bcv, items_json, notes,
         payment_method, payment_reference, paid_at, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insertDoc.run(
-      docId, doc_type, nextDocNum, client_id, today, due_date || today,
+      docId, doc_type, nextDocNum, client_id, client_rif || client.rif || null, today, due_date || today,
       'EMITTED', is_paid ? 'PAID' : 'PENDING', currency, totalCurrency,
       rate_type_applied, appliedRate, bcvRate,
       subtotalBs, ivaRate, ivaAmountBs, totalBsApplied,

@@ -335,28 +335,7 @@ export function seedDatabase() {
     console.log(`Seeded ${initialClients.length} clients.`);
 
     // 6. Equipo real de Tu Naranja Digital
-    const realTeam = [
-      { id: 'tm_eleonora', name: 'Eleonora', role: 'Especialista / Coordinación', salary: 100, method: 'PAGO_MOVIL' },
-      { id: 'tm_angie', name: 'Angie', role: 'Community Manager / Redacción', salary: 80, method: 'PAGO_MOVIL' },
-      { id: 'tm_isabelle', name: 'Isabelle', role: 'Diseño / Contenido', salary: 100, method: 'BINANCE' },
-      { id: 'tm_mariana', name: 'Mariana', role: 'Estrategia & Contenido', salary: 80, method: 'PAGO_MOVIL' },
-      { id: 'tm_adis', name: 'Adis', role: 'Diseño & Audiovisual', salary: 80, method: 'PAGO_MOVIL' }
-    ];
-
-    const insertMember = db.prepare(`
-      INSERT OR REPLACE INTO team_members (
-        id, name, role, monthly_salary, payment_method, payment_frequency, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const m of realTeam) {
-      insertMember.run(
-        m.id, m.name, m.role, m.salary,
-        m.method, 'QUINCENAL',
-        m.method === 'BINANCE' ? 'Cobro acordado exclusivamente por Binance USDT' : 'Pago móvil / Transferencia Bs'
-      );
-    }
-    console.log(`Seeded ${realTeam.length} real team members.`);
+    syncCanonicalTeam();
 
     // 7. Documentos historicos de ejemplo
     const insertDoc = db.prepare(`
@@ -403,4 +382,126 @@ export function seedDatabase() {
 
     console.log('Initial database setup complete.');
   }
+
+  // Siempre sincronizar el equipo canónico actualizado sin duplicados
+  syncCanonicalTeam();
+}
+
+export function syncCanonicalTeam() {
+  const db = getDb();
+
+  try {
+    // Si habían registros de Isabelle o duplicados generados automáticamente, reasignamos pagos si hubiese
+    db.exec(`
+      UPDATE team_payments SET member_id = 'tm_ysael' 
+      WHERE member_id IN ('tm_isabelle', 'tm_1793216982099')
+    `);
+    db.exec(`
+      UPDATE team_payments SET member_id = 'tm_adis' 
+      WHERE member_id IN ('tm_1793216982473')
+    `);
+    db.exec(`
+      UPDATE team_payments SET member_id = 'tm_angie' 
+      WHERE member_id IN ('tm_1793216981914')
+    `);
+    db.exec(`
+      UPDATE team_payments SET member_id = 'tm_eleonora' 
+      WHERE member_id IN ('tm_1793216981737')
+    `);
+    db.exec(`
+      UPDATE team_payments SET member_id = 'tm_mariana' 
+      WHERE member_id IN ('tm_1793216982288')
+    `);
+
+    // Eliminar IDs no canónicos o duplicados
+    db.exec(`
+      DELETE FROM team_members 
+      WHERE id NOT IN ('tm_ysael', 'tm_angie', 'tm_adis', 'tm_mariana', 'tm_eleonora');
+    `);
+  } catch (e) {
+    console.warn('Error during team cleanup:', e);
+  }
+
+  const canonicalTeam = [
+    {
+      id: 'tm_ysael',
+      name: 'Ysael',
+      role: 'Diseño & Contenido',
+      monthly_salary: 240,
+      payment_method: 'PAGO_MOVIL',
+      payment_frequency: 'QUINCENAL',
+      rate_rule: 'EURO_INCENTIVE',
+      incentive_rule: 'Incentivo a Tasa Euro cuando hace todo bien, sino a Tasa BCV.',
+      notes: '$240/mes ($120 quincenal). Tasa regular BCV; si cumple objetivos se le paga a tasa Euro como incentivo.'
+    },
+    {
+      id: 'tm_angie',
+      name: 'Angie',
+      role: 'Community Manager & Redacción',
+      monthly_salary: 240,
+      payment_method: 'PAGO_MOVIL',
+      payment_frequency: 'QUINCENAL',
+      rate_rule: 'BCV',
+      incentive_rule: 'Base $200 + bono incentivo $40 = $240 a tasa BCV.',
+      notes: 'Normalmente gana $240 a tasa BCV ($120 quincenal).'
+    },
+    {
+      id: 'tm_adis',
+      name: 'Adis',
+      role: 'Diseño & Audiovisual',
+      monthly_salary: 300,
+      payment_method: 'PAGO_MOVIL',
+      payment_frequency: 'QUINCENAL',
+      rate_rule: 'BCV',
+      incentive_rule: 'Pago regular a tasa oficial BCV.',
+      notes: '$300/mes ($150 quincenal) a tasa oficial BCV.'
+    },
+    {
+      id: 'tm_mariana',
+      name: 'Mariana',
+      role: 'Estrategia & Contenido',
+      monthly_salary: 300,
+      payment_method: 'PAGO_MOVIL',
+      payment_frequency: 'QUINCENAL',
+      rate_rule: 'BCV',
+      incentive_rule: 'Pago regular a tasa oficial BCV.',
+      notes: '$300/mes ($150 quincenal) a tasa oficial BCV.'
+    },
+    {
+      id: 'tm_eleonora',
+      name: 'Eleonora',
+      role: 'Especialista & Coordinación',
+      monthly_salary: 60,
+      payment_method: 'BINANCE',
+      payment_frequency: 'QUINCENAL',
+      rate_rule: 'BINANCE',
+      incentive_rule: 'Pago acordado exclusivamente en Binance USDT ($60/mes).',
+      notes: '$60/mes ($30 quincenal) a tasa Binance. Cobro exclusivo por Binance USDT.'
+    }
+  ];
+
+  const stmt = db.prepare(`
+    INSERT INTO team_members (
+      id, name, role, monthly_salary, payment_method, payment_frequency, rate_rule, incentive_rule, notes, active
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      role = excluded.role,
+      monthly_salary = excluded.monthly_salary,
+      payment_method = excluded.payment_method,
+      payment_frequency = excluded.payment_frequency,
+      rate_rule = excluded.rate_rule,
+      incentive_rule = excluded.incentive_rule,
+      notes = excluded.notes,
+      active = 1
+  `);
+
+  for (const m of canonicalTeam) {
+    stmt.run(
+      m.id, m.name, m.role, m.monthly_salary,
+      m.payment_method, m.payment_frequency,
+      m.rate_rule, m.incentive_rule, m.notes
+    );
+  }
+  console.log('Canonical team synchronized: Ysael, Angie, Adis, Mariana, Eleonora.');
 }

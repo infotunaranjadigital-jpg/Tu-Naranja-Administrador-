@@ -31,6 +31,7 @@ export default function NewEmissionView({
   const [paymentMethod, setPaymentMethod] = useState<string>('TRANSFERENCIA_BS');
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [selectedRif, setSelectedRif] = useState<string>('');
 
   // Items
   const [items, setItems] = useState<any[]>([
@@ -44,6 +45,8 @@ export default function NewEmissionView({
     if (client) {
       setDocType(client.preferred_document === 'FORMA_LIBRE' ? 'FORMA_LIBRE' : 'RECIBO');
       setRateType(client.default_rate_type || 'BCV');
+      const rifs = (client.rif || '').split(/[,/|]/).map((r: string) => r.trim()).filter(Boolean);
+      setSelectedRif(rifs[0] || client.rif || '');
       
       const newItems = [];
       if (client.base_monthly_fee > 0) {
@@ -124,6 +127,7 @@ export default function NewEmissionView({
         body: JSON.stringify({
           doc_type: docType,
           client_id: selectedClientId,
+          client_rif: selectedRif || selectedClient?.rif,
           issue_date: issueDate,
           due_date: dueDate,
           currency,
@@ -188,7 +192,35 @@ export default function NewEmissionView({
               {selectedClient && (
                 <div className="mt-2 text-xs text-slate-400 bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">
                   <div className="font-semibold text-slate-200">{selectedClient.business_name || selectedClient.name}</div>
-                  <div>RIF: {selectedClient.rif || 'Sin RIF'} | Telf: {selectedClient.phone || 'N/A'}</div>
+                  {(() => {
+                    const rifs = (selectedClient.rif || '').split(/[,/|]/).map((r: string) => r.trim()).filter(Boolean);
+                    if (rifs.length > 1) {
+                      return (
+                        <div className="my-2 p-2 bg-slate-900 border border-slate-800 rounded-lg">
+                          <span className="text-[10px] text-orange-400 font-bold block mb-1">
+                            Este cliente tiene varios RIF. Selecciona el que deseas usar:
+                          </span>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {rifs.map((r: string) => (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => setSelectedRif(r)}
+                                className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition ${
+                                  selectedRif === r
+                                    ? 'bg-orange-500 text-white shadow shadow-orange-500/30'
+                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                }`}
+                              >
+                                {r}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return <div>RIF: {selectedClient.rif || 'Sin RIF'} | Telf: {selectedClient.phone || 'N/A'}</div>;
+                  })()}
                   <div className="text-[11px] text-slate-500 truncate">{selectedClient.address || 'Caracas'}</div>
                 </div>
               )}

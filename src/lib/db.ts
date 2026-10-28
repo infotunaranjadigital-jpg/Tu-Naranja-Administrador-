@@ -117,6 +117,8 @@ function initSchema(db: DatabaseSync) {
       monthly_salary REAL DEFAULT 0,
       payment_method TEXT DEFAULT 'PAGO_MOVIL', -- 'BINANCE', 'PAGO_MOVIL', 'EFECTIVO', 'ZELLE'
       payment_frequency TEXT DEFAULT 'QUINCENAL',
+      rate_rule TEXT DEFAULT 'BCV', -- 'BCV', 'EURO_INCENTIVE', 'BINANCE'
+      incentive_rule TEXT,
       active INTEGER DEFAULT 1,
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -145,4 +147,14 @@ function initSchema(db: DatabaseSync) {
       value TEXT NOT NULL
     );
   `);
+
+  try {
+    db.exec(`ALTER TABLE team_members ADD COLUMN rate_rule TEXT DEFAULT 'BCV'`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE team_members ADD COLUMN incentive_rule TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN client_rif TEXT`);
+  } catch {}
 }
