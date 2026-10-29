@@ -437,6 +437,8 @@ export function seedDatabase() {
   syncCanonicalClients();
   // Sincronizar documentos históricos categorizados para gráficos de áreas de ingreso
   syncHistoricalDocuments();
+  // Sincronizar evaluaciones semanales de diseño (Adis vs Mariana)
+  syncDesignerEvaluations();
 }
 
 export function syncCanonicalTeam() {
@@ -484,6 +486,8 @@ export function syncCanonicalTeam() {
       payment_frequency: 'QUINCENAL',
       rate_rule: 'EURO_INCENTIVE',
       incentive_rule: 'Incentivo a Tasa Euro cuando hace todo bien, sino a Tasa BCV.',
+      soft_skills: JSON.stringify(['Liderazgo de Cuentas', 'Comunicación Asertiva', 'Gestión del Tiempo', 'Resolución de Conflictos', 'Orientación a Resultados']),
+      hard_skills: JSON.stringify(['Copywriting Médico & Comercial', 'Planificación y Grillas de Contenido', 'Meta Business Suite', 'Métricas & Engagement', 'Storytelling']),
       notes: '$240/mes ($120 quincenal). Tasa regular BCV; si cumple objetivos se le paga a tasa Euro como incentivo.'
     },
     {
@@ -495,28 +499,34 @@ export function syncCanonicalTeam() {
       payment_frequency: 'QUINCENAL',
       rate_rule: 'BCV',
       incentive_rule: 'Base $200 + bono incentivo $40 = $240 a tasa BCV.',
+      soft_skills: JSON.stringify(['Responsabilidad', 'Organización', 'Atención al Detalle', 'Trabajo en Equipo']),
+      hard_skills: JSON.stringify(['Diseño Gráfico RRSS', 'Canva Pro', 'Photoshop Básico', 'Redacción de Copys']),
       notes: 'Normalmente gana $240 a tasa BCV ($120 quincenal).'
     },
     {
       id: 'tm_adis',
       name: 'Adis',
-      role: 'Diseño & Audiovisual',
+      role: 'Diseño Gráfico & Identidad Visual',
       monthly_salary: 300,
       payment_method: 'PAGO_MOVIL',
       payment_frequency: 'QUINCENAL',
       rate_rule: 'BCV',
       incentive_rule: 'Pago regular a tasa oficial BCV.',
+      soft_skills: JSON.stringify(['Velocidad de Entrega', 'Atención al Detalle', 'Receptividad al Feedback', 'Proactividad']),
+      hard_skills: JSON.stringify(['Adobe Illustrator', 'Adobe Photoshop', 'Diseño de Carruseles', 'Branding & Identidad', 'Post Estático Publicitario', 'Material Impreso']),
       notes: '$300/mes ($150 quincenal) a tasa oficial BCV.'
     },
     {
       id: 'tm_mariana',
       name: 'Mariana',
-      role: 'Estrategia & Contenido',
+      role: 'Diseño Audiovisual & Motion',
       monthly_salary: 300,
       payment_method: 'PAGO_MOVIL',
       payment_frequency: 'QUINCENAL',
       rate_rule: 'BCV',
       incentive_rule: 'Pago regular a tasa oficial BCV.',
+      soft_skills: JSON.stringify(['Creatividad Visual', 'Innovación de Formatos', 'Autonomía', 'Puntualidad en Entregas']),
+      hard_skills: JSON.stringify(['Edición de Reels & TikTok', 'Adobe After Effects', 'CapCut Pro', 'Adobe Photoshop', 'Animación Tipográfica', 'Stories Interactivas']),
       notes: '$300/mes ($150 quincenal) a tasa oficial BCV.'
     },
     {
@@ -528,14 +538,16 @@ export function syncCanonicalTeam() {
       payment_frequency: 'QUINCENAL',
       rate_rule: 'BINANCE',
       incentive_rule: 'Pago acordado exclusivamente en Binance USDT ($60/mes).',
+      soft_skills: JSON.stringify(['Seguimiento de Procesos', 'Organización Operativa', 'Puntualidad', 'Empatía']),
+      hard_skills: JSON.stringify(['Revisión de Calidad', 'Gestión de Fichas', 'Soporte Administrativo', 'Planillas de Control']),
       notes: '$60/mes ($30 quincenal) a tasa Binance. Cobro exclusivo por Binance USDT.'
     }
   ];
 
   const stmt = db.prepare(`
     INSERT INTO team_members (
-      id, name, role, monthly_salary, payment_method, payment_frequency, rate_rule, incentive_rule, notes, active
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      id, name, role, monthly_salary, payment_method, payment_frequency, rate_rule, incentive_rule, notes, soft_skills, hard_skills, active
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       role = excluded.role,
@@ -545,6 +557,8 @@ export function syncCanonicalTeam() {
       rate_rule = excluded.rate_rule,
       incentive_rule = excluded.incentive_rule,
       notes = excluded.notes,
+      soft_skills = COALESCE(team_members.soft_skills, excluded.soft_skills),
+      hard_skills = COALESCE(team_members.hard_skills, excluded.hard_skills),
       active = 1
   `);
 
@@ -552,7 +566,8 @@ export function syncCanonicalTeam() {
     stmt.run(
       m.id, m.name, m.role, m.monthly_salary,
       m.payment_method, m.payment_frequency,
-      m.rate_rule, m.incentive_rule, m.notes
+      m.rate_rule, m.incentive_rule, m.notes,
+      m.soft_skills, m.hard_skills
     );
   }
   console.log('Canonical team synchronized: Isabelle, Angie, Adis, Mariana, Eleonora.');
@@ -670,7 +685,13 @@ export function syncCanonicalClients() {
       notes: 'Cliente compartido con Isabelle. Cobro $200 en efectivo: $100 corresponden a Isa y $100 a la agencia.'
     },
     'fetal-care': { rif: '', business_name: 'Fetal Care C.A. (Sin RIF)', base_monthly_fee: 160.0 },
-    'feminaid': { rif: 'J-50125683-7', business_name: 'Servicios Feminaid 2021 CA', base_monthly_fee: 320.0 }
+    'feminaid': { 
+      name: 'Servicios Feminaid 2021 CA',
+      rif: 'J-50125683-7', 
+      business_name: 'Servicios Feminaid 2021 CA', 
+      base_monthly_fee: 320.0,
+      notes: 'Rotulados e impresiones especiales.'
+    }
   };
 
   const updateStmt = db.prepare(`
@@ -725,8 +746,36 @@ export function syncCanonicalClients() {
   }
 
   // 1. Separar definitivamente los 2 acuerdos (NO LIGARLOS):
-  // Eliminar el antiguo registro fusionado 'arianita' o 'Odontólogo / Arinita'
-  db.exec(`DELETE FROM clients WHERE id = 'arianita' OR name LIKE '%Odontólogo / Arinita%'`);
+  // Reasignar cualquier documento viejo que apunte a arianita o odontologo-arinita
+  try {
+    db.exec(`UPDATE documents SET client_id = 'arinita' WHERE client_id IN ('arianita', 'odontologo-arinita')`);
+  } catch (e) {}
+
+  // Eliminar cualquier registro previo fusionado o desactualizado
+  db.exec(`
+    DELETE FROM clients WHERE id IN ('arianita', 'odontologo-arinita')
+      OR (name LIKE '%Arinita%' AND id != 'arinita') 
+      OR (name LIKE '%Odont%' AND name LIKE '%Arinita%')
+      OR (name LIKE '%Odontologo / Arinita%')
+      OR (name LIKE '%Odontólogo / Arinita%');
+  `);
+
+  // Asegurar corrección del nombre canónico de Feminaid
+  db.exec(`
+    UPDATE clients 
+    SET name = 'Servicios Feminaid 2021 CA', 
+        business_name = 'Servicios Feminaid 2021 CA',
+        rif = 'J-50125683-7'
+    WHERE id = 'feminaid' OR name LIKE '%Feminad%' OR name LIKE '%Feminaid%';
+  `);
+
+  // Asegurar tarifas canónicas solicitadas por el usuario:
+  db.exec(`
+    UPDATE clients SET base_monthly_fee = 150.0 WHERE id = 'sovemo';
+    UPDATE clients SET base_monthly_fee = 170.0 WHERE id = 'cc-garcia';
+    UPDATE clients SET base_monthly_fee = 250.0 WHERE id = 'dra-dama';
+    UPDATE clients SET base_monthly_fee = 100.0 WHERE id = 'english-lab';
+  `);
 
   // A. Cliente: Arinita (Fee $170, RIF J-50811817-0, compartido con Isabelle)
   const arinitaExists = db.prepare('SELECT id FROM clients WHERE id = ?').get('arinita');
@@ -788,7 +837,7 @@ export function syncHistoricalDocuments() {
   const db = getDb();
   const countRow = db.prepare('SELECT COUNT(*) as count FROM documents').get() as { count: number };
 
-  if (countRow.count <= 2) {
+  if (countRow.count < 30) {
     console.log('Seeding rich historical categorized documents (May - Oct 2026)...');
     const insertStmt = db.prepare(`
       INSERT OR REPLACE INTO documents (
@@ -994,5 +1043,178 @@ export function syncHistoricalDocuments() {
       'TRANSFERENCIA_BS', '2026-10-24'
     );
     console.log('Synchronized real SOVEMO 2-day coverage & pauta ($660) for October.');
+  }
+}
+
+export function syncDesignerEvaluations() {
+  const db = getDb();
+  const countRow = db.prepare('SELECT COUNT(*) as count FROM designer_evaluations').get() as { count: number };
+
+  if (countRow.count < 8) {
+    console.log('Seeding rich weekly designer evaluations (Adis vs Mariana)...');
+    const insertStmt = db.prepare(`
+      INSERT OR REPLACE INTO designer_evaluations (
+        id, member_id, designer_name, week_start_date, week_label,
+        clients_worked, static_posts_count, reels_count, carousels_count,
+        extra_works_count, total_pieces, returned_pieces_count,
+        error_rate_percent, correction_reasons, feedback_notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const weeklyData = [
+      // Semana 1 (Lunes 05 de Octubre 2026 - Revisa del 28/09 al 04/10)
+      {
+        id: 'eval_w1_adis',
+        member_id: 'tm_adis',
+        designer_name: 'Adis',
+        week_start_date: '2026-10-05',
+        week_label: 'Semana 1 (05 Oct)',
+        clients_worked: JSON.stringify(['Servicios Feminaid', 'Dra DAMA', 'Sociedad de Mastologia', 'Dr Gerardo']),
+        static_posts_count: 12,
+        reels_count: 2,
+        carousels_count: 6,
+        extra_works_count: 2,
+        total_pieces: 22,
+        returned_pieces_count: 2,
+        error_rate_percent: 9.1,
+        correction_reasons: 'Ajuste de color de isotipo en carrusel y corrección de fecha en post estático.',
+        feedback_notes: 'Buen volumen en carruseles médicos. Cuidar coincidencia de pantone corporativo.'
+      },
+      {
+        id: 'eval_w1_mariana',
+        member_id: 'tm_mariana',
+        designer_name: 'Mariana',
+        week_start_date: '2026-10-05',
+        week_label: 'Semana 1 (05 Oct)',
+        clients_worked: JSON.stringify(['CC Garcia', 'FotoTecno', 'SOVEMO', 'Autorepuesto Los Rosales']),
+        static_posts_count: 8,
+        reels_count: 8,
+        carousels_count: 4,
+        extra_works_count: 1,
+        total_pieces: 21,
+        returned_pieces_count: 3,
+        error_rate_percent: 14.3,
+        correction_reasons: 'Desfase de audio/voz en Reel de CC García y error ortográfico en portada.',
+        feedback_notes: 'Gran dinamismo en los reels. Revisar sincronización de pista de audio antes de pasar a aprobación.'
+      },
+
+      // Semana 2 (Lunes 12 de Octubre 2026 - Revisa del 05/10 al 11/10)
+      {
+        id: 'eval_w2_adis',
+        member_id: 'tm_adis',
+        designer_name: 'Adis',
+        week_start_date: '2026-10-12',
+        week_label: 'Semana 2 (12 Oct)',
+        clients_worked: JSON.stringify(['Clinica Leopoldo Aguerrevere', 'Servicios Feminaid', 'Dra Virginia', 'Sociedad Venezolana de Oncologia']),
+        static_posts_count: 14,
+        reels_count: 1,
+        carousels_count: 8,
+        extra_works_count: 1,
+        total_pieces: 24,
+        returned_pieces_count: 1,
+        error_rate_percent: 4.2,
+        correction_reasons: 'Reubicación de logotipo institucional en la última lámina.',
+        feedback_notes: 'Excelente semana de muy baja tasa de corrección (4.2%). Cumplió los tiempos exactos.'
+      },
+      {
+        id: 'eval_w2_mariana',
+        member_id: 'tm_mariana',
+        designer_name: 'Mariana',
+        week_start_date: '2026-10-12',
+        week_label: 'Semana 2 (12 Oct)',
+        clients_worked: JSON.stringify(['CC Garcia', 'Calibre', 'SOVEMO', 'English Lab']),
+        static_posts_count: 6,
+        reels_count: 9,
+        carousels_count: 5,
+        extra_works_count: 2,
+        total_pieces: 22,
+        returned_pieces_count: 4,
+        error_rate_percent: 18.2,
+        correction_reasons: 'Exportación en ratio 1:1 en vez de 9:16 para Reels y cambio de tipografía no autorizada.',
+        feedback_notes: 'Pico alto de devoluciones (18.2%). Se acordó chequear la plantilla maestra de cada cuenta.'
+      },
+
+      // Semana 3 (Lunes 19 de Octubre 2026 - Revisa del 12/10 al 18/10)
+      {
+        id: 'eval_w3_adis',
+        member_id: 'tm_adis',
+        designer_name: 'Adis',
+        week_start_date: '2026-10-19',
+        week_label: 'Semana 3 (19 Oct)',
+        clients_worked: JSON.stringify(['Dra DAMA', 'Sociedad de Mastologia', 'Dr Gerardo', 'Arias DOC']),
+        static_posts_count: 11,
+        reels_count: 2,
+        carousels_count: 7,
+        extra_works_count: 3,
+        total_pieces: 23,
+        returned_pieces_count: 2,
+        error_rate_percent: 8.7,
+        correction_reasons: 'Márgenes de seguridad cortados en vista previa de feed de Instagram.',
+        feedback_notes: 'Manejo impecable de artes imprimibles para congreso (3 extras). Recordar guías de zona segura.'
+      },
+      {
+        id: 'eval_w3_mariana',
+        member_id: 'tm_mariana',
+        designer_name: 'Mariana',
+        week_start_date: '2026-10-19',
+        week_label: 'Semana 3 (19 Oct)',
+        clients_worked: JSON.stringify(['SOVEMO', 'CC Garcia', 'FotoTecno', 'Odontólogo (Dr. Rony)']),
+        static_posts_count: 7,
+        reels_count: 10,
+        carousels_count: 4,
+        extra_works_count: 1,
+        total_pieces: 22,
+        returned_pieces_count: 2,
+        error_rate_percent: 9.1,
+        correction_reasons: 'Subtítulo con error en precio en reel odontológico.',
+        feedback_notes: 'Gran mejoría respecto a la semana 2. La tasa de error bajó a 9.1%.'
+      },
+
+      // Semana 4 (Lunes 26 de Octubre 2026 - Revisa del 19/10 al 25/10)
+      {
+        id: 'eval_w4_adis',
+        member_id: 'tm_adis',
+        designer_name: 'Adis',
+        week_start_date: '2026-10-26',
+        week_label: 'Semana 4 (26 Oct)',
+        clients_worked: JSON.stringify(['Servicios Feminaid', 'Clinica Leopoldo Aguerrevere', 'Sociedad Venezolana de Oncologia', 'CC Garcia']),
+        static_posts_count: 13,
+        reels_count: 2,
+        carousels_count: 8,
+        extra_works_count: 1,
+        total_pieces: 24,
+        returned_pieces_count: 1,
+        error_rate_percent: 4.2,
+        correction_reasons: 'Sustitución de fotografía médica de stock por una provista por el cliente.',
+        feedback_notes: 'Consistencia alta. Mantiene tasa de error reducida en 4.2%.'
+      },
+      {
+        id: 'eval_w4_mariana',
+        member_id: 'tm_mariana',
+        designer_name: 'Mariana',
+        week_start_date: '2026-10-26',
+        week_label: 'Semana 4 (26 Oct)',
+        clients_worked: JSON.stringify(['SOVEMO', 'Autorepuesto Los Rosales', 'Calibre', 'FotoTecno']),
+        static_posts_count: 8,
+        reels_count: 11,
+        carousels_count: 3,
+        extra_works_count: 3,
+        total_pieces: 25,
+        returned_pieces_count: 3,
+        error_rate_percent: 12.0,
+        correction_reasons: 'Música con copyright no permitida en cuenta comercial y placa de cierre desactualizada.',
+        feedback_notes: 'Alto volumen de producción audiovisual (11 reels + 3 adaptaciones de cobertura SOVEMO). Reforzar catálogo de audios libres.'
+      }
+    ];
+
+    for (const w of weeklyData) {
+      insertStmt.run(
+        w.id, w.member_id, w.designer_name, w.week_start_date, w.week_label,
+        w.clients_worked, w.static_posts_count, w.reels_count, w.carousels_count,
+        w.extra_works_count, w.total_pieces, w.returned_pieces_count,
+        w.error_rate_percent, w.correction_reasons, w.feedback_notes
+      );
+    }
+    console.log(`Seeded ${weeklyData.length} weekly designer evaluations.`);
   }
 }

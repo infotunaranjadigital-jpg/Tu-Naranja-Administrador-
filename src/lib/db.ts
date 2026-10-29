@@ -152,6 +152,39 @@ function initSchema(db: DatabaseSync) {
       FOREIGN KEY (member_id) REFERENCES team_members(id)
     );
 
+    CREATE TABLE IF NOT EXISTS designer_evaluations (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL, -- 'tm_adis', 'tm_mariana'
+      designer_name TEXT NOT NULL,
+      week_start_date TEXT NOT NULL, -- Fecha del lunes evaluado (YYYY-MM-DD)
+      week_label TEXT NOT NULL, -- ej 'Semana 4 - Octubre 2026'
+      clients_worked TEXT NOT NULL, -- JSON array de clientes atendidos
+      static_posts_count INTEGER DEFAULT 0,
+      reels_count INTEGER DEFAULT 0,
+      carousels_count INTEGER DEFAULT 0,
+      extra_works_count INTEGER DEFAULT 0,
+      total_pieces INTEGER DEFAULT 0,
+      returned_pieces_count INTEGER DEFAULT 0, -- Fichas devueltas por corrección
+      error_rate_percent REAL DEFAULT 0, -- % de error sobre total
+      correction_reasons TEXT, -- Motivos de correcciones
+      feedback_notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (member_id) REFERENCES team_members(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS member_evaluations (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL,
+      evaluation_date TEXT NOT NULL,
+      period TEXT NOT NULL,
+      overall_score REAL NOT NULL,
+      strengths TEXT,
+      improvements TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (member_id) REFERENCES team_members(id)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -163,6 +196,15 @@ function initSchema(db: DatabaseSync) {
   } catch {}
   try {
     db.exec(`ALTER TABLE team_members ADD COLUMN incentive_rule TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE team_members ADD COLUMN soft_skills TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE team_members ADD COLUMN hard_skills TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE team_members ADD COLUMN bio TEXT`);
   } catch {}
   try {
     db.exec(`ALTER TABLE documents ADD COLUMN client_rif TEXT`);
