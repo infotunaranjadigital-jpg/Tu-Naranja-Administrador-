@@ -13,6 +13,28 @@ interface NewEmissionProps {
   onEmissionSuccess: (createdDoc: any) => void;
 }
 
+// Categorías oficiales de servicios y líneas de negocio
+const SERVICE_CATEGORIES = [
+  { id: 'MARKETING_RRSS', name: '📱 Manejo de Redes', color: 'text-orange-400' },
+  { id: 'MARKETING_ADS', name: '🚀 Meta Ads / Pauta', color: 'text-cyan-400' },
+  { id: 'MARKETING_OTROS', name: '💡 Otros Marketing', color: 'text-purple-400' },
+  { id: 'DESARROLLO', name: '💻 Desarrollo Web / Software', color: 'text-blue-400' },
+  { id: 'GRABACIONES', name: '🎬 Grabaciones Extra', color: 'text-amber-400' },
+  { id: 'FORMACION', name: '🎓 Formación / Cursos', color: 'text-emerald-400' },
+  { id: 'MATERIAL_IMPRESO', name: '🖨️ Material Impreso / POP', color: 'text-pink-400' },
+];
+
+function detectCategory(desc: string): string {
+  const t = (desc || '').toLowerCase();
+  if (t.includes('ads') || t.includes('pauta') || t.includes('meta ads') || t.includes('facebook') || t.includes('google') || t.includes('campaña') || t.includes('anuncio')) return 'MARKETING_ADS';
+  if (t.includes('web') || t.includes('software') || t.includes('landing') || t.includes('página') || t.includes('desarrollo') || t.includes('sistema') || t.includes('tienda') || t.includes('app') || t.includes('portal')) return 'DESARROLLO';
+  if (t.includes('grabaci') || t.includes('rodaje') || t.includes('cobertura') || t.includes('video') || t.includes('audiovisual')) return 'GRABACIONES';
+  if (t.includes('formaci') || t.includes('taller') || t.includes('curso') || t.includes('capacitaci') || t.includes('clase') || t.includes('entrenamiento')) return 'FORMACION';
+  if (t.includes('impres') || t.includes('rotul') || t.includes('pendon') || t.includes('pop') || t.includes('papeler') || t.includes('tarjeta') || t.includes('pulsera')) return 'MATERIAL_IMPRESO';
+  if (t.includes('branding') || t.includes('logo') || t.includes('identidad') || t.includes('manual') || t.includes('auditor')) return 'MARKETING_OTROS';
+  return 'MARKETING_RRSS';
+}
+
 export default function NewEmissionView({
   clients,
   rates,
@@ -40,7 +62,7 @@ export default function NewEmissionView({
 
   // Items
   const [items, setItems] = useState<any[]>([
-    { description: 'Manejo de Redes Sociales', unit: '1.0', quantity: 1, amount: 150.0 }
+    { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 150.0 }
   ]);
 
   // When selected client changes, update defaults
@@ -57,6 +79,7 @@ export default function NewEmissionView({
       if (client.base_monthly_fee > 0) {
         newItems.push({
           description: `Manejo de Redes Sociales (${new Date().toLocaleString('es-VE', { month: 'long' })})`,
+          category: 'MARKETING_RRSS',
           unit: '1.0',
           quantity: 1,
           amount: client.base_monthly_fee
@@ -65,6 +88,7 @@ export default function NewEmissionView({
       if (client.meta_ads_budget > 0) {
         newItems.push({
           description: `Pauta Publicitaria Meta ADS`,
+          category: 'MARKETING_ADS',
           unit: '1.0',
           quantity: 1,
           amount: client.meta_ads_budget
@@ -122,7 +146,7 @@ export default function NewEmissionView({
   const baseUsdBcv = baseBsBcv / bcvRate;
 
   const handleAddItem = () => {
-    setItems([...items, { description: '', unit: '1.0', quantity: 1, amount: 0 }]);
+    setItems([...items, { description: '', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -133,6 +157,12 @@ export default function NewEmissionView({
   const handleItemChange = (index: number, field: string, value: any) => {
     const updated = [...items];
     updated[index][field] = value;
+    if (field === 'description' && !updated[index].categoryManuallySet) {
+      updated[index].category = detectCategory(value);
+    }
+    if (field === 'category') {
+      updated[index].categoryManuallySet = true;
+    }
     setItems(updated);
   };
 
@@ -438,53 +468,69 @@ export default function NewEmissionView({
 
           <div className="space-y-2.5">
             {items.map((it, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-slate-950 border border-slate-800 p-2.5 rounded-xl">
+              <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-950 border border-slate-800 p-2.5 rounded-xl">
+                {/* Selector de Categoría / Línea de Negocio */}
+                <select
+                  value={it.category || 'MARKETING_RRSS'}
+                  onChange={(e) => handleItemChange(idx, 'category', e.target.value)}
+                  className="bg-slate-900 border border-slate-800 text-xs text-orange-300 rounded-lg px-2 py-1.5 font-medium outline-none sm:w-48 focus:border-orange-500"
+                  title="Categoría de servicio para reportes y gráficos"
+                >
+                  {SERVICE_CATEGORIES.map(cat => (
+                    <option key={cat.id} value={cat.id} className="bg-slate-900 text-slate-200">
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+
                 <input
                   type="text"
                   required
-                  placeholder="Descripción del servicio (ej. Manejo de redes, Meta Ads, Grabación...)"
+                  placeholder="Descripción del servicio (ej. Manejo de redes, Meta Ads, Grabación, Rotulado...)"
                   value={it.description}
                   onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                  className="w-7/12 bg-transparent text-xs text-slate-100 outline-none px-2 py-1"
+                  className="flex-1 bg-transparent text-xs text-slate-100 outline-none px-2 py-1"
                 />
 
-                <input
-                  type="text"
-                  placeholder="Unidad"
-                  value={it.unit || '1.0'}
-                  onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
-                  className="w-1.5/12 bg-slate-900 text-center text-xs font-mono text-slate-300 rounded px-1.5 py-1 border border-slate-800"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Unidad"
+                    value={it.unit || '1.0'}
+                    onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
+                    className="w-16 bg-slate-900 text-center text-xs font-mono text-slate-300 rounded px-1.5 py-1.5 border border-slate-800"
+                  />
 
-                <input
-                  type="number"
-                  min="1"
-                  value={it.quantity || 1}
-                  onChange={(e) => handleItemChange(idx, 'quantity', parseInt(e.target.value, 10) || 1)}
-                  className="w-1.5/12 bg-slate-900 text-center text-xs font-mono text-slate-300 rounded px-1.5 py-1 border border-slate-800"
-                />
-
-                <div className="w-2/12 relative">
-                  <span className="absolute left-2 top-1.5 text-xs text-slate-500 font-mono">$</span>
                   <input
                     type="number"
-                    step="0.01"
-                    required
-                    placeholder="Monto $"
-                    value={it.amount}
-                    onChange={(e) => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-900 text-right text-xs font-mono font-bold text-emerald-400 rounded pl-5 pr-2 py-1 border border-slate-800"
+                    min="1"
+                    value={it.quantity || 1}
+                    onChange={(e) => handleItemChange(idx, 'quantity', parseInt(e.target.value, 10) || 1)}
+                    className="w-14 bg-slate-900 text-center text-xs font-mono text-slate-300 rounded px-1.5 py-1.5 border border-slate-800"
                   />
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleRemoveItem(idx)}
-                  disabled={items.length <= 1}
-                  className="p-1.5 text-slate-500 hover:text-red-400 disabled:opacity-30"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  <div className="w-24 relative">
+                    <span className="absolute left-2 top-1.5 text-xs text-slate-500 font-mono">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="Monto $"
+                      value={it.amount}
+                      onChange={(e) => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-900 text-right text-xs font-mono font-bold text-emerald-400 rounded pl-5 pr-2 py-1.5 border border-slate-800"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(idx)}
+                    disabled={items.length <= 1}
+                    className="p-1.5 text-slate-500 hover:text-red-400 disabled:opacity-30"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

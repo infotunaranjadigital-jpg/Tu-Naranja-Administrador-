@@ -435,6 +435,8 @@ export function seedDatabase() {
   syncCanonicalTeam();
   // Sincronizar listado oficial de RIFs de clientes
   syncCanonicalClients();
+  // Sincronizar documentos históricos categorizados para gráficos de áreas de ingreso
+  syncHistoricalDocuments();
 }
 
 export function syncCanonicalTeam() {
@@ -773,4 +775,185 @@ export function syncCanonicalClients() {
   `);
 
   console.log('Canonical clients, fees, separate agreements and debts synchronized successfully.');
+}
+
+export function syncHistoricalDocuments() {
+  const db = getDb();
+  const countRow = db.prepare('SELECT COUNT(*) as count FROM documents').get() as { count: number };
+
+  if (countRow.count <= 2) {
+    console.log('Seeding rich historical categorized documents (May - Oct 2026)...');
+    const insertStmt = db.prepare(`
+      INSERT OR REPLACE INTO documents (
+        id, doc_type, doc_number, client_id, issue_date, due_date,
+        status, payment_status, currency, total_amount_currency,
+        rate_type_applied, applied_rate, bcv_rate_at_issue,
+        subtotal_bs, iva_rate, iva_amount_bs, total_bs_applied,
+        base_bs_bcv, base_usd_bcv, items_json, notes, payment_method, paid_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const historical = [
+      // MAYO 2026
+      { id: 'doc_2026_05_01', type: 'FORMA_LIBRE', num: 280, client: 'mantica', date: '2026-05-05', rate: 450, total: 350, items: [
+        { description: 'Manejo integral de redes sociales - Mayo', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_05_02', type: 'RECIBO', num: 340, client: 'dr-gerardo', date: '2026-05-01', rate: 450, total: 370, items: [
+        { description: 'Manejo de Redes Sociales y Contenido', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Pauta Publicitaria Meta Ads (Facebook e Instagram)', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_05_03', type: 'RECIBO', num: 341, client: 'arias-doc', date: '2026-05-02', rate: 485, total: 300, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 200 },
+        { description: 'Campaña Meta Ads Tráfico & Mensajes', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 100 }
+      ]},
+      { id: 'doc_2026_05_04', type: 'FORMA_LIBRE', num: 281, client: 'cc-garcia', date: '2026-05-02', rate: 470, total: 170, items: [
+        { description: 'Manejo mensual de redes sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 140 },
+        { description: 'Jornada de grabación presencial en tienda', category: 'GRABACIONES', unit: 'Jornada', quantity: 1, amount: 30 }
+      ]},
+      { id: 'doc_2026_05_05', type: 'RECIBO', num: 342, client: 'soc-mastologia', date: '2026-05-15', rate: 450, total: 240, items: [
+        { description: 'Manejo de Redes Sociales Institucional', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 240 }
+      ]},
+      { id: 'doc_2026_05_06', type: 'RECIBO', num: 343, client: 'english-lab', date: '2026-05-20', rate: 450, total: 500, items: [
+        { description: 'Diseño y Desarrollo de Landing Page Web', category: 'DESARROLLO', unit: 'Proyecto', quantity: 1, amount: 500 }
+      ]},
+
+      // JUNIO 2026 (Pico por Desarrollo de Software)
+      { id: 'doc_2026_06_01', type: 'RECIBO', num: 344, client: 'calibre', date: '2026-06-10', rate: 520, total: 2500, items: [
+        { description: 'Desarrollo de Software a Medida y Módulos Web', category: 'DESARROLLO', unit: 'Sistema', quantity: 1, amount: 2500 }
+      ]},
+      { id: 'doc_2026_06_02', type: 'FORMA_LIBRE', num: 282, client: 'mantica', date: '2026-06-05', rate: 520, total: 350, items: [
+        { description: 'Manejo integral de redes sociales - Junio', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_06_03', type: 'FORMA_LIBRE', num: 283, client: 'feminaid', date: '2026-06-14', rate: 520, total: 470, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 320 },
+        { description: 'Rotulados y material impreso para instalaciones clínicas', category: 'MATERIAL_IMPRESO', unit: 'Producción', quantity: 1, amount: 150 }
+      ]},
+      { id: 'doc_2026_06_04', type: 'RECIBO', num: 345, client: 'dr-gerardo', date: '2026-06-01', rate: 520, total: 370, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Presupuesto Pauta Publicitaria Meta Ads', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_06_05', type: 'RECIBO', num: 346, client: 'sovemo', date: '2026-06-24', rate: 520, total: 330, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 150 },
+        { description: 'Cobertura audiovisual y rodaje de jornada médica', category: 'GRABACIONES', unit: 'Cobertura', quantity: 1, amount: 180 }
+      ]},
+
+      // JULIO 2026
+      { id: 'doc_2026_07_01', type: 'FORMA_LIBRE', num: 284, client: 'mantica', date: '2026-07-05', rate: 610, total: 350, items: [
+        { description: 'Manejo de redes sociales - Julio', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_07_02', type: 'RECIBO', num: 347, client: 'soc-oncologia', date: '2026-07-12', rate: 610, total: 450, items: [
+        { description: 'Taller de Formación y Estrategia de Marca Médica', category: 'FORMACION', unit: 'Taller', quantity: 1, amount: 450 }
+      ]},
+      { id: 'doc_2026_07_03', type: 'RECIBO', num: 348, client: 'dr-gerardo', date: '2026-07-01', rate: 610, total: 370, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Pauta Meta Ads', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_07_04', type: 'RECIBO', num: 349, client: 'arias-doc', date: '2026-07-02', rate: 650, total: 300, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 200 },
+        { description: 'Meta Ads Pauta', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 100 }
+      ]},
+      { id: 'doc_2026_07_05', type: 'FORMA_LIBRE', num: 285, client: 'cc-garcia', date: '2026-07-02', rate: 630, total: 170, items: [
+        { description: 'Manejo mensual redes', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 140 },
+        { description: 'Jornada de grabación mensual', category: 'GRABACIONES', unit: 'Jornada', quantity: 1, amount: 30 }
+      ]},
+      { id: 'doc_2026_07_06', type: 'RECIBO', num: 350, client: 'los-rosales', date: '2026-07-15', rate: 610, total: 340, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 200 },
+        { description: 'Pendones y material publicitario impreso', category: 'MATERIAL_IMPRESO', unit: 'Impresos', quantity: 1, amount: 140 }
+      ]},
+
+      // AGOSTO 2026
+      { id: 'doc_2026_08_01', type: 'FORMA_LIBRE', num: 286, client: 'mantica', date: '2026-08-05', rate: 720, total: 350, items: [
+        { description: 'Manejo de redes sociales - Agosto', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_08_02', type: 'RECIBO', num: 351, client: 'calibre', date: '2026-08-15', rate: 720, total: 850, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 180 },
+        { description: 'Desarrollo de Software y Módulos Web Adicionales', category: 'DESARROLLO', unit: 'Módulos', quantity: 1, amount: 670 }
+      ]},
+      { id: 'doc_2026_08_03', type: 'RECIBO', num: 352, client: 'dr-gerardo', date: '2026-08-01', rate: 720, total: 370, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Pauta Publicitaria Meta Ads', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_08_04', type: 'RECIBO', num: 353, client: 'fototecno', date: '2026-08-20', rate: 720, total: 380, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 200 },
+        { description: 'Cobertura de grabación en estudio fotográfico', category: 'GRABACIONES', unit: 'Grabación', quantity: 1, amount: 180 }
+      ]},
+      { id: 'doc_2026_08_05', type: 'FORMA_LIBRE', num: 287, client: 'cc-garcia', date: '2026-08-02', rate: 750, total: 170, items: [
+        { description: 'Manejo mensual redes sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 140 },
+        { description: 'Jornada de grabación mensual', category: 'GRABACIONES', unit: 'Jornada', quantity: 1, amount: 30 }
+      ]},
+      { id: 'doc_2026_08_06', type: 'RECIBO', num: 354, client: 'dra-virginia', date: '2026-08-20', rate: 750, total: 330, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 180 },
+        { description: 'Branding e Identidad Visual de Marca', category: 'MARKETING_OTROS', unit: 'Branding', quantity: 1, amount: 150 }
+      ]},
+
+      // SEPTIEMBRE 2026
+      { id: 'doc_2026_09_01', type: 'FORMA_LIBRE', num: 288, client: 'mantica', date: '2026-09-05', rate: 810, total: 350, items: [
+        { description: 'Manejo de redes sociales - Septiembre', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_09_02', type: 'RECIBO', num: 355, client: 'dra-dama', date: '2026-09-01', rate: 810, total: 250, items: [
+        { description: 'Manejo de Redes Sociales y Contenido Médico', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 }
+      ]},
+      { id: 'doc_2026_09_03', type: 'RECIBO', num: 356, client: 'odontologo-rony', date: '2026-09-01', rate: 810, total: 250, items: [
+        { description: 'Manejo de Redes Sociales Odontológicas', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 }
+      ]},
+      { id: 'doc_2026_09_04', type: 'RECIBO', num: 357, client: 'soc-mastologia', date: '2026-09-18', rate: 810, total: 540, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 240 },
+        { description: 'Capacitación y Formación Digital para Médicos', category: 'FORMACION', unit: 'Capacitación', quantity: 1, amount: 300 }
+      ]},
+      { id: 'doc_2026_09_05', type: 'RECIBO', num: 358, client: 'dr-gerardo', date: '2026-09-01', rate: 810, total: 370, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Presupuesto Meta Ads Campañas', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_09_06', type: 'FORMA_LIBRE', num: 289, client: 'feminaid', date: '2026-09-22', rate: 810, total: 500, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 320 },
+        { description: 'Impresión de material publicitario y rotulados', category: 'MATERIAL_IMPRESO', unit: 'Producción', quantity: 1, amount: 180 }
+      ]},
+      { id: 'doc_2026_09_07', type: 'RECIBO', num: 359_01, client: 'sovemo', date: '2026-09-24', rate: 810, total: 380, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 150 },
+        { description: 'Cobertura de grabación en Congreso Médico', category: 'GRABACIONES', unit: 'Cobertura', quantity: 1, amount: 230 }
+      ]},
+      { id: 'doc_2026_09_08', type: 'FORMA_LIBRE', num: 290, client: 'cc-garcia', date: '2026-09-02', rate: 850, total: 170, items: [
+        { description: 'Manejo mensual de redes sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 140 },
+        { description: 'Jornada de grabación mensual', category: 'GRABACIONES', unit: 'Jornada', quantity: 1, amount: 30 }
+      ]},
+
+      // OCTUBRE 2026
+      { id: 'doc_2026_10_01', type: 'FORMA_LIBRE', num: 298, client: 'mantica', date: '2026-10-05', rate: 888.12, total: 350, items: [
+        { description: 'Manejo de redes sociales - Octubre', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 350 }
+      ]},
+      { id: 'doc_2026_10_02', type: 'RECIBO', num: 360, client: 'dr-gerardo', date: '2026-10-01', rate: 888.12, total: 370, items: [
+        { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 },
+        { description: 'Pauta Publicitaria Meta Ads', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 120 }
+      ]},
+      { id: 'doc_2026_10_03', type: 'FORMA_LIBRE', num: 299, client: 'cc-garcia', date: '2026-10-02', rate: 947.76, total: 170, items: [
+        { description: 'Manejo mensual de redes sociales', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 140 },
+        { description: 'Jornada de grabación presencial en tienda', category: 'GRABACIONES', unit: 'Jornada', quantity: 1, amount: 30 }
+      ]},
+      { id: 'doc_2026_10_04', type: 'RECIBO', num: 361, client: 'dra-dama', date: '2026-10-01', rate: 888.12, total: 250, items: [
+        { description: 'Manejo de Redes Sociales Médicas', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 }
+      ]},
+      { id: 'doc_2026_10_05', type: 'RECIBO', num: 362, client: 'english-lab', date: '2026-10-18', rate: 888.12, total: 600, items: [
+        { description: 'Desarrollo Web y Portal Educativo', category: 'DESARROLLO', unit: 'Portal', quantity: 1, amount: 600 }
+      ]}
+    ];
+
+    for (const h of historical) {
+      const subtotalBs = Number((h.total * h.rate).toFixed(2));
+      const ivaRate = h.type === 'FORMA_LIBRE' ? 0.16 : 0;
+      const ivaAmountBs = Number((subtotalBs * ivaRate).toFixed(2));
+      const totalBs = subtotalBs + ivaAmountBs;
+
+      insertStmt.run(
+        h.id, h.type, h.num, h.client, h.date, h.date,
+        'EMITTED', 'PAID', 'USD', h.total,
+        'BCV', h.rate, h.rate,
+        subtotalBs, ivaRate, ivaAmountBs, totalBs,
+        totalBs, h.total,
+        JSON.stringify(h.items),
+        'Facturación histórica categorizada por área de servicio',
+        'TRANSFERENCIA_BS', h.date
+      );
+    }
+    console.log(`Seeded ${historical.length} categorized historical documents.`);
+  }
 }

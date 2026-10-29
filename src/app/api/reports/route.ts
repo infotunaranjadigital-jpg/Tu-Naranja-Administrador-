@@ -155,7 +155,235 @@ export async function GET(req: Request) {
   `);
   const pendingDebts = pendingStmt.all();
 
-  // 6. Pronóstico de Ingreso Mensual Recurrente (MRR) y Flujo de Caja
+  // 6. Análisis Dinámico de Ingresos por Categorías / Líneas de Negocio (Notion Style)
+  // Categorías:
+  // - MARKETING_RRSS: Manejo de Redes Sociales
+  // - MARKETING_ADS: Meta Ads & Pauta Publicitaria
+  // - MARKETING_OTROS: Otros de Marketing & Branding
+  // - DESARROLLO: Desarrollo Web & Software
+  // - GRABACIONES: Grabaciones Extra & Coberturas
+  // - FORMACION: Formación & Capacitación
+  // - MATERIAL_IMPRESO: Material Impreso & Rotulados
+  const categoryMeta: Record<string, { id: string; name: string; group: string; groupName: string; icon: string; color: string }> = {
+    MARKETING_RRSS: { id: 'MARKETING_RRSS', name: 'Manejo de Redes Sociales', group: 'MARKETING', groupName: 'Marketing Digital', icon: '📱', color: '#f97316' },
+    MARKETING_ADS: { id: 'MARKETING_ADS', name: 'Meta Ads & Pauta', group: 'MARKETING', groupName: 'Marketing Digital', icon: '🚀', color: '#06b6d4' },
+    MARKETING_OTROS: { id: 'MARKETING_OTROS', name: 'Otros Marketing & Branding', group: 'MARKETING', groupName: 'Marketing Digital', icon: '💡', color: '#a855f7' },
+    DESARROLLO: { id: 'DESARROLLO', name: 'Desarrollo Web & Software', group: 'DESARROLLO', groupName: 'Desarrollo Web & Software', icon: '💻', color: '#3b82f6' },
+    GRABACIONES: { id: 'GRABACIONES', name: 'Grabaciones Extra & Coberturas', group: 'GRABACIONES', groupName: 'Grabaciones & Audiovisual', icon: '🎬', color: '#f59e0b' },
+    FORMACION: { id: 'FORMACION', name: 'Formación & Capacitación', group: 'FORMACION', groupName: 'Formación & Capacitación', icon: '🎓', color: '#10b981' },
+    MATERIAL_IMPRESO: { id: 'MATERIAL_IMPRESO', name: 'Material Impreso & Rotulados', group: 'MATERIAL_IMPRESO', groupName: 'Material Impreso', icon: '🖨️', color: '#ec4899' },
+  };
+
+  const groupMeta: Record<string, { id: string; name: string; icon: string; color: string }> = {
+    MARKETING: { id: 'MARKETING', name: 'Marketing Digital Total', icon: '📱', color: '#f97316' },
+    DESARROLLO: { id: 'DESARROLLO', name: 'Desarrollo Web & Software', icon: '💻', color: '#3b82f6' },
+    GRABACIONES: { id: 'GRABACIONES', name: 'Grabaciones Extra & Coberturas', icon: '🎬', color: '#f59e0b' },
+    FORMACION: { id: 'FORMACION', name: 'Formación & Capacitación', icon: '🎓', color: '#10b981' },
+    MATERIAL_IMPRESO: { id: 'MATERIAL_IMPRESO', name: 'Material Impreso & Rotulados', icon: '🖨️', color: '#ec4899' },
+  };
+
+  function inferCategory(text: string): string {
+    const t = (text || '').toLowerCase();
+    if (t.includes('ads') || t.includes('pauta') || t.includes('anuncio') || t.includes('facebook') || t.includes('meta ads') || t.includes('google') || t.includes('campaña')) {
+      return 'MARKETING_ADS';
+    }
+    if (t.includes('desarrollo') || t.includes('web') || t.includes('software') || t.includes('sistema') || t.includes('página') || t.includes('landing') || t.includes('portal') || t.includes('tienda') || t.includes('ecommerce') || t.includes('app') || t.includes('bot')) {
+      return 'DESARROLLO';
+    }
+    if (t.includes('grabaci') || t.includes('rodaje') || t.includes('cobertura') || t.includes('video') || t.includes('fotograf') || t.includes('audiovisual')) {
+      return 'GRABACIONES';
+    }
+    if (t.includes('formaci') || t.includes('taller') || t.includes('curso') || t.includes('capacitaci') || t.includes('entrenamiento') || t.includes('clase') || t.includes('workshop')) {
+      return 'FORMACION';
+    }
+    if (t.includes('impres') || t.includes('rotul') || t.includes('pendon') || t.includes('pop') || t.includes('papeler') || t.includes('tarjeta') || t.includes('banner') || t.includes('pulsera')) {
+      return 'MATERIAL_IMPRESO';
+    }
+    if (t.includes('branding') || t.includes('logo') || t.includes('identidad') || t.includes('consultor') || t.includes('auditor') || t.includes('manual de marca')) {
+      return 'MARKETING_OTROS';
+    }
+    return 'MARKETING_RRSS';
+  }
+
+  // Obtener todos los documentos en el rango para desglosar sus renglones
+  const rangeDocsStmt = db.prepare(`
+    SELECT
+      id, doc_type, client_id, issue_date, currency, total_amount_currency,
+      total_bs_applied, base_usd_bcv, base_bs_bcv, applied_rate, items_json
+    FROM documents
+    WHERE issue_date >= ? AND issue_date <= ?
+    ORDER BY issue_date ASC
+  `);
+  const rangeDocs = rangeDocsStmt.all(startDate, endDate) as any[];
+
+  const categoryTotals: Record<string, { totalUsd: number; totalBs: number; count: number; clients: Set<string> }> = {};
+  for (const k of Object.keys(categoryMeta)) {
+    categoryTotals[k] = { totalUsd: 0, totalBs: 0, count: 0, clients: new Set() };
+  }
+
+  const monthlyCategoryMap: Record<string, Record<string, number>> = {};
+  let totalRangeUsd = 0;
+  let totalRangeBs = 0;
+
+  for (const d of rangeDocs) {
+    const monthKey = (d.issue_date || '').slice(0, 7);
+    if (!monthlyCategoryMap[monthKey]) {
+      monthlyCategoryMap[monthKey] = {};
+      for (const k of Object.keys(categoryMeta)) {
+        monthlyCategoryMap[monthKey][k] = 0;
+      }
+    }
+
+    let items: any[] = [];
+    try {
+      if (d.items_json) {
+        items = JSON.parse(d.items_json);
+      }
+    } catch {
+      items = [];
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      items = [{ description: 'Servicio general', amount: d.total_amount_currency, category: 'MARKETING_RRSS' }];
+    }
+
+    const docUsd = Number(d.total_amount_currency) || 0;
+    const docBs = Number(d.total_bs_applied) || 0;
+    totalRangeUsd += docUsd;
+    totalRangeBs += docBs;
+
+    const itemsSum = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+
+    for (const it of items) {
+      const catKey = it.category && categoryMeta[it.category] ? it.category : inferCategory(it.description);
+      const rawAmt = Number(it.amount) || 0;
+      
+      // Proporción del renglón respecto al total del documento
+      let itUsd = 0;
+      if (items.length === 1 || itemsSum <= 0) {
+        itUsd = docUsd;
+      } else if (itemsSum > 0 && Math.abs(itemsSum - docUsd) < 1) {
+        itUsd = rawAmt;
+      } else {
+        itUsd = (rawAmt / itemsSum) * docUsd;
+      }
+
+      const itBs = Number((itUsd * (d.applied_rate || 888.12)).toFixed(2));
+
+      if (categoryTotals[catKey]) {
+        categoryTotals[catKey].totalUsd += itUsd;
+        categoryTotals[catKey].totalBs += itBs;
+        categoryTotals[catKey].count += (Number(it.quantity) || 1);
+        if (d.client_id) categoryTotals[catKey].clients.add(d.client_id);
+      }
+
+      if (monthlyCategoryMap[monthKey]) {
+        monthlyCategoryMap[monthKey][catKey] = (monthlyCategoryMap[monthKey][catKey] || 0) + itUsd;
+      }
+    }
+  }
+
+  // Estructurar desglose por categorías individuales
+  const categoryBreakdown = Object.keys(categoryMeta).map((k) => {
+    const meta = categoryMeta[k];
+    const stat = categoryTotals[k];
+    const usd = Number(stat.totalUsd.toFixed(2));
+    const bs = Number(stat.totalBs.toFixed(2));
+    const percent = totalRangeUsd > 0 ? Number(((usd / totalRangeUsd) * 100).toFixed(1)) : 0;
+    const avgTicket = stat.count > 0 ? Number((usd / stat.count).toFixed(2)) : 0;
+
+    return {
+      id: meta.id,
+      name: meta.name,
+      group: meta.group,
+      groupName: meta.groupName,
+      icon: meta.icon,
+      color: meta.color,
+      totalUsd: usd,
+      totalBs: bs,
+      percent,
+      count: stat.count,
+      uniqueClientsCount: stat.clients.size,
+      avgTicketUsd: avgTicket
+    };
+  }).sort((a, b) => b.totalUsd - a.totalUsd);
+
+  // Estructurar desglose por grandes grupos (Marketing Digital vs Desarrollo vs Grabaciones, etc.)
+  const groupTotals: Record<string, { totalUsd: number; totalBs: number; count: number }> = {};
+  for (const g of Object.keys(groupMeta)) {
+    groupTotals[g] = { totalUsd: 0, totalBs: 0, count: 0 };
+  }
+  for (const cat of categoryBreakdown) {
+    if (groupTotals[cat.group]) {
+      groupTotals[cat.group].totalUsd += cat.totalUsd;
+      groupTotals[cat.group].totalBs += cat.totalBs;
+      groupTotals[cat.group].count += cat.count;
+    }
+  }
+
+  const groupBreakdown = Object.keys(groupMeta).map((g) => {
+    const meta = groupMeta[g];
+    const stat = groupTotals[g];
+    const usd = Number(stat.totalUsd.toFixed(2));
+    const bs = Number(stat.totalBs.toFixed(2));
+    const percent = totalRangeUsd > 0 ? Number(((usd / totalRangeUsd) * 100).toFixed(1)) : 0;
+
+    return {
+      id: meta.id,
+      name: meta.name,
+      icon: meta.icon,
+      color: meta.color,
+      totalUsd: usd,
+      totalBs: bs,
+      percent,
+      count: stat.count
+    };
+  }).sort((a, b) => b.totalUsd - a.totalUsd);
+
+  // Serie mensual con categorías y grupos para gráficos dinámicos
+  const monthlyCategorySeries = Object.keys(monthlyCategoryMap).sort().map((m) => {
+    const cats = monthlyCategoryMap[m];
+    const monthTotal = Object.values(cats).reduce((acc, v) => acc + v, 0);
+
+    const groups: Record<string, number> = {
+      MARKETING: (cats.MARKETING_RRSS || 0) + (cats.MARKETING_ADS || 0) + (cats.MARKETING_OTROS || 0),
+      DESARROLLO: cats.DESARROLLO || 0,
+      GRABACIONES: cats.GRABACIONES || 0,
+      FORMACION: cats.FORMACION || 0,
+      MATERIAL_IMPRESO: cats.MATERIAL_IMPRESO || 0,
+    };
+
+    return {
+      month: m,
+      totalUsd: Number(monthTotal.toFixed(2)),
+      categories: cats,
+      groups
+    };
+  });
+
+  // Diagnóstico de Áreas Fuertes
+  const topCategory = categoryBreakdown[0] || null;
+  const topGroup = groupBreakdown[0] || null;
+  const runnerUpCategory = categoryBreakdown[1] || null;
+
+  const categoryAnalysis = {
+    totalRangeUsd: Number(totalRangeUsd.toFixed(2)),
+    totalRangeBs: Number(totalRangeBs.toFixed(2)),
+    categoryBreakdown,
+    groupBreakdown,
+    monthlyCategorySeries,
+    topCategory,
+    topGroup,
+    runnerUpCategory,
+    marketingSubcategories: {
+      rrssUsd: categoryTotals.MARKETING_RRSS.totalUsd,
+      adsUsd: categoryTotals.MARKETING_ADS.totalUsd,
+      otrosUsd: categoryTotals.MARKETING_OTROS.totalUsd,
+      totalMarketingUsd: groupTotals.MARKETING.totalUsd
+    }
+  };
+
+  // 7. Pronóstico de Ingreso Mensual Recurrente (MRR) y Flujo de Caja
   // Considera cartera de clientes activos y desglosa deducciones/acuerdos con Isabelle:
   // - Autopartes Los Rosales: $200 cobrados ($100 Isa / $100 Agencia en efectivo)
   // - Odontólogo (Dr. Rony): $250 por acuerdo ($100 a Isabelle a tasa BCV / $150 Agencia)
@@ -272,6 +500,7 @@ export async function GET(req: Request) {
     },
     comparison,
     monthlyForecast,
+    categoryAnalysis,
     clientBreakdown,
     pendingDebts
   });

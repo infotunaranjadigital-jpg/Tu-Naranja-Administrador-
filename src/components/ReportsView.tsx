@@ -6,7 +6,8 @@ import {
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
   ShieldCheck, History, Award, AlertCircle, RefreshCw,
   Sparkles, CheckCircle2, ChevronDown, ChevronUp, Info, Handshake,
-  Search, ArrowUpDown, Filter
+  Search, ArrowUpDown, Filter, PieChart, Layers, Target,
+  Laptop, Video, GraduationCap, Printer, Megaphone, Smartphone
 } from 'lucide-react';
 
 export default function ReportsView() {
@@ -30,6 +31,10 @@ export default function ReportsView() {
   // Filtro y ordenamiento en tabla de clientes
   const [tableSearch, setTableSearch] = useState('');
   const [tableSort, setTableSort] = useState<'fee_desc' | 'fee_asc' | 'invoiced_desc' | 'invoiced_asc' | 'docs_desc' | 'name_asc'>('fee_desc');
+
+  // Filtro de categoría en gráfico dinámico (Estilo Notion)
+  const [selectedAreaTab, setSelectedAreaTab] = useState<string>('ALL');
+  const [selectedMonthDetail, setSelectedMonthDetail] = useState<string | null>(null);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -467,79 +472,513 @@ export default function ReportsView() {
         </div>
       )}
 
-      {/* Visual Bar Chart: Facturación Mes a Mes */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-              📊 Gráfico Comparativo de Facturación Mensual (USD BCV)
-            </h3>
-            <p className="text-xs text-slate-400">
-              Visualiza en qué mes se facturó más (verde) y en qué mes se facturó menos (ámbar).
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-emerald-500 inline-block" />
-              <span className="text-slate-300">Mes Máximo</span>
+      {/* 🚀 Análisis Dinámico de Ingresos por Áreas y Líneas de Negocio (Estilo Notion) */}
+      {reportData?.categoryAnalysis && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          {/* Header de Áreas de Negocio */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                  Líneas de Negocio & Áreas Fuertes
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Facturación Total: ${reportData.categoryAnalysis.totalRangeUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                📈 Diagnóstico de Facturación por Especialidad (Notion Style)
+              </h3>
+              <p className="text-xs text-slate-400">
+                Conoce exactamente cuánto dinero ingresa por Marketing (Redes vs Ads vs Otros), Desarrollo Web, Grabaciones, Formación y Material Impreso.
+              </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-amber-500 inline-block" />
-              <span className="text-slate-300">Mes Mínimo</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-orange-600 inline-block" />
-              <span className="text-slate-300">Mes Regular</span>
+
+            {/* Selector de Pestañas / Filtro de Área para el Gráfico */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+              <button
+                onClick={() => setSelectedAreaTab('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'ALL'
+                    ? 'bg-orange-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Todas las Áreas
+              </button>
+
+              <button
+                onClick={() => setSelectedAreaTab('MARKETING')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'MARKETING'
+                    ? 'bg-amber-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>📱</span>
+                Marketing (Redes + Ads)
+              </button>
+
+              <button
+                onClick={() => setSelectedAreaTab('DESARROLLO')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'DESARROLLO'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>💻</span>
+                Desarrollo Web
+              </button>
+
+              <button
+                onClick={() => setSelectedAreaTab('GRABACIONES')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'GRABACIONES'
+                    ? 'bg-yellow-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>🎬</span>
+                Grabaciones
+              </button>
+
+              <button
+                onClick={() => setSelectedAreaTab('FORMACION')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'FORMACION'
+                    ? 'bg-emerald-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>🎓</span>
+                Formación
+              </button>
+
+              <button
+                onClick={() => setSelectedAreaTab('MATERIAL_IMPRESO')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  selectedAreaTab === 'MATERIAL_IMPRESO'
+                    ? 'bg-pink-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>🖨️</span>
+                Material Impreso
+              </button>
             </div>
           </div>
-        </div>
 
-        {monthlySeries.length === 0 ? (
-          <div className="py-16 text-center text-slate-500 text-xs">
-            No hay documentos registrados en el rango de fechas seleccionado.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="h-64 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-800 overflow-x-auto">
-              {monthlySeries.map((m: any) => {
-                const val = m.total_base_usd_bcv || 0;
-                const heightPercent = Math.max(Math.round((val / maxSeriesVal) * 100), 8);
-                const isPeak = m.month === reportData?.stats?.peakMonth;
-                const isLowest = m.month === reportData?.stats?.lowestMonth;
+          {/* Tarjetas Diagnósticas de Áreas Fuertes */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Medalla de Oro: Área Líder */}
+            <div className="bg-gradient-to-br from-amber-500/10 via-slate-950 to-slate-950 border border-amber-500/30 rounded-xl p-4 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  👑 Tu Área Más Fuerte (Líder en Ventas)
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                  {reportData.categoryAnalysis.topCategory?.percent}% del Total
+                </span>
+              </div>
 
-                return (
-                  <div key={m.month} className="flex-1 min-w-[65px] flex flex-col items-center gap-2 group h-full justify-end">
-                    {/* Tooltip on hover */}
-                    <div className="text-[11px] font-mono font-bold text-slate-200 mb-1 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition">
-                      ${val.toFixed(0)}
-                    </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-2xl">{reportData.categoryAnalysis.topCategory?.icon}</span>
+                <h4 className="text-base font-black text-white">
+                  {reportData.categoryAnalysis.topCategory?.name}
+                </h4>
+              </div>
 
-                    {/* Bar */}
-                    <div 
-                      className="w-full max-w-[48px] rounded-t-xl transition-all duration-300 relative group-hover:brightness-110"
-                      style={{
-                        height: `${heightPercent}%`,
-                        backgroundColor: isPeak ? '#10b981' : (isLowest ? '#f59e0b' : '#ea580c')
-                      }}
-                    >
-                      {isPeak && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-emerald-400 text-xs">
-                          👑
-                        </div>
-                      )}
-                    </div>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-amber-300 font-mono">
+                  ${reportData.categoryAnalysis.topCategory?.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  (Bs. {formatBs(reportData.categoryAnalysis.topCategory?.totalBs)})
+                </span>
+              </div>
 
-                    {/* Month Label */}
-                    <div className="text-[11px] font-semibold text-slate-400 mt-1 whitespace-nowrap">
-                      {getMonthName(m.month)}
-                    </div>
+              <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                <span>Ticket Promedio: <strong className="text-slate-200">${reportData.categoryAnalysis.topCategory?.avgTicketUsd}</strong></span>
+                <span>{reportData.categoryAnalysis.topCategory?.count} servicios emitidos</span>
+              </div>
+            </div>
+
+            {/* Desglose Especial: Marketing Digital (Redes vs Ads vs Otros) */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📱</span>
+                  Desglose de Marketing Digital
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-300">
+                  ${(reportData.categoryAnalysis.marketingSubcategories?.totalMarketingUsd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD
+                </span>
+              </div>
+
+              <div className="space-y-2 mt-2">
+                {/* Redes Sociales */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                    <span>Manejo de Redes (RRSS)</span>
                   </div>
+                  <span className="font-mono font-bold text-orange-400">
+                    ${(reportData.categoryAnalysis.marketingSubcategories?.rrssUsd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {/* Meta Ads */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block" />
+                    <span>Meta Ads & Pauta</span>
+                  </div>
+                  <span className="font-mono font-bold text-cyan-400">
+                    ${(reportData.categoryAnalysis.marketingSubcategories?.adsUsd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {/* Otros Marketing */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block" />
+                    <span>Branding / Consultoría</span>
+                  </div>
+                  <span className="font-mono font-bold text-purple-400">
+                    ${(reportData.categoryAnalysis.marketingSubcategories?.otrosUsd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 mt-2.5 pt-2 border-t border-slate-800">
+                Pauta y redes representan la mayor recurrencia mensual.
+              </div>
+            </div>
+
+            {/* Medalla de Plata: Segunda Área Fuerte */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🥈</span>
+                  Segunda Área con Mayor Aporte
+                </span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                  {reportData.categoryAnalysis.runnerUpCategory?.percent}% del Total
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-2xl">{reportData.categoryAnalysis.runnerUpCategory?.icon}</span>
+                <h4 className="text-base font-black text-white">
+                  {reportData.categoryAnalysis.runnerUpCategory?.name}
+                </h4>
+              </div>
+
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-200 font-mono">
+                  ${reportData.categoryAnalysis.runnerUpCategory?.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  (Bs. {formatBs(reportData.categoryAnalysis.runnerUpCategory?.totalBs)})
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+                <span>Ticket Promedio: <strong className="text-slate-200">${reportData.categoryAnalysis.runnerUpCategory?.avgTicketUsd}</strong></span>
+                <span>{reportData.categoryAnalysis.runnerUpCategory?.count} servicios emitidos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra Continua Multicolor de Distribución (%) */}
+          <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <PieChart className="w-4 h-4 text-orange-400" />
+                Distribución Proporcional de Ingresos en el Período
+              </span>
+              <span className="text-xs text-slate-400">100% de la facturación</span>
+            </div>
+
+            {/* Barra acumulada */}
+            <div className="w-full h-4 bg-slate-900 rounded-full overflow-hidden flex shadow-inner">
+              {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
+                if (cat.percent <= 0) return null;
+                return (
+                  <div
+                    key={cat.id}
+                    title={`${cat.name}: $${cat.totalUsd} (${cat.percent}%)`}
+                    style={{ width: `${cat.percent}%`, backgroundColor: cat.color }}
+                    className="h-full transition-all duration-300 hover:brightness-125 cursor-pointer"
+                  />
                 );
               })}
             </div>
+
+            {/* Leyenda interactiva */}
+            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
+              {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => (
+                <div
+                  key={cat.id}
+                  onClick={() => setSelectedAreaTab(cat.id === 'MARKETING_RRSS' || cat.id === 'MARKETING_ADS' || cat.id === 'MARKETING_OTROS' ? 'MARKETING' : cat.id)}
+                  className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                  <span className="text-slate-300">{cat.name}:</span>
+                  <span className="font-mono font-bold text-white">${cat.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 0 })}</span>
+                  <span className="text-slate-400 text-[10px]">({cat.percent}%)</span>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Gráfico Dinámico Mensual Interactivo */}
+          <div className="bg-slate-950 border border-slate-800/90 rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                  📊 Evolución Mensual por Categoría ({selectedAreaTab === 'ALL' ? 'Todas las Áreas Apiladas' : selectedAreaTab})
+                </h4>
+                <p className="text-xs text-slate-400">
+                  {selectedAreaTab === 'ALL' 
+                    ? 'Pasa el cursor o haz click sobre cada mes para ver el desglose exacto de servicios.'
+                    : `Filtrado exclusivamente por: ${selectedAreaTab}`}
+                </p>
+              </div>
+
+              {selectedMonthDetail && (
+                <button
+                  onClick={() => setSelectedMonthDetail(null)}
+                  className="text-[11px] text-orange-400 hover:underline flex items-center gap-1"
+                >
+                  Limpiar mes seleccionado ({getMonthName(selectedMonthDetail)})
+                </button>
+              )}
+            </div>
+
+            {/* Canvas de Barras */}
+            {reportData.categoryAnalysis.monthlyCategorySeries.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                No hay movimientos registrados en este período.
+              </div>
+            ) : (
+              <div>
+                {(() => {
+                  const series = reportData.categoryAnalysis.monthlyCategorySeries;
+                  // Calcular valor máximo según el filtro seleccionado
+                  let maxVal = 100;
+                  series.forEach((s: any) => {
+                    let v = s.totalUsd;
+                    if (selectedAreaTab === 'MARKETING') v = s.groups?.MARKETING || 0;
+                    else if (selectedAreaTab !== 'ALL') v = s.categories?.[selectedAreaTab] || 0;
+                    if (v > maxVal) maxVal = v;
+                  });
+
+                  return (
+                    <div className="h-64 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-800 overflow-x-auto">
+                      {series.map((s: any) => {
+                        let activeVal = s.totalUsd;
+                        if (selectedAreaTab === 'MARKETING') activeVal = s.groups?.MARKETING || 0;
+                        else if (selectedAreaTab !== 'ALL') activeVal = s.categories?.[selectedAreaTab] || 0;
+
+                        const heightPercent = Math.max(Math.round((activeVal / maxVal) * 100), 6);
+                        const isSelected = selectedMonthDetail === s.month;
+
+                        return (
+                          <div
+                            key={s.month}
+                            onClick={() => setSelectedMonthDetail(isSelected ? null : s.month)}
+                            className="flex-1 min-w-[70px] flex flex-col items-center gap-2 group h-full justify-end cursor-pointer"
+                          >
+                            {/* Monto sobre la barra */}
+                            <div className="text-[11px] font-mono font-bold text-slate-200 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition">
+                              ${activeVal.toFixed(0)}
+                            </div>
+
+                            {/* Barra con segmentos apilados */}
+                            <div
+                              className={`w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col-reverse transition-all duration-300 relative ${
+                                isSelected ? 'ring-2 ring-orange-400 brightness-110 shadow-lg' : 'hover:brightness-110'
+                              }`}
+                              style={{ height: `${heightPercent}%` }}
+                            >
+                              {selectedAreaTab === 'ALL' ? (
+                                <>
+                                  {/* Renglones apilados */}
+                                  {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
+                                    const catUsd = s.categories?.[cat.id] || 0;
+                                    if (catUsd <= 0 || s.totalUsd <= 0) return null;
+                                    const segHeight = (catUsd / s.totalUsd) * 100;
+                                    return (
+                                      <div
+                                        key={cat.id}
+                                        style={{ height: `${segHeight}%`, backgroundColor: cat.color }}
+                                        title={`${cat.name}: $${catUsd.toFixed(2)}`}
+                                        className="w-full"
+                                      />
+                                    );
+                                  })}
+                                </>
+                              ) : selectedAreaTab === 'MARKETING' ? (
+                                <>
+                                  {/* Subdesglose de marketing */}
+                                  {s.categories?.MARKETING_RRSS > 0 && (
+                                    <div style={{ height: `${(s.categories.MARKETING_RRSS / activeVal) * 100}%`, backgroundColor: '#f97316' }} />
+                                  )}
+                                  {s.categories?.MARKETING_ADS > 0 && (
+                                    <div style={{ height: `${(s.categories.MARKETING_ADS / activeVal) * 100}%`, backgroundColor: '#06b6d4' }} />
+                                  )}
+                                  {s.categories?.MARKETING_OTROS > 0 && (
+                                    <div style={{ height: `${(s.categories.MARKETING_OTROS / activeVal) * 100}%`, backgroundColor: '#a855f7' }} />
+                                  )}
+                                </>
+                              ) : (
+                                <div
+                                  className="w-full h-full"
+                                  style={{
+                                    backgroundColor:
+                                      selectedAreaTab === 'DESARROLLO' ? '#3b82f6' :
+                                      selectedAreaTab === 'GRABACIONES' ? '#f59e0b' :
+                                      selectedAreaTab === 'FORMACION' ? '#10b981' : '#ec4899'
+                                  }}
+                                />
+                              )}
+                            </div>
+
+                            {/* Etiqueta del Mes */}
+                            <div className={`text-[11px] font-semibold mt-1 whitespace-nowrap ${
+                              isSelected ? 'text-orange-400 font-bold' : 'text-slate-400'
+                            }`}>
+                              {getMonthName(s.month)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Tarjeta de Detalle del Mes Seleccionado */}
+                {selectedMonthDetail && (() => {
+                  const mData = reportData.categoryAnalysis.monthlyCategorySeries.find((s: any) => s.month === selectedMonthDetail);
+                  if (!mData) return null;
+                  return (
+                    <div className="mt-4 p-4 bg-slate-900 border border-orange-500/40 rounded-xl animate-in fade-in">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-orange-400 flex items-center gap-1.5">
+                          <span>🔍</span>
+                          Desglose Detallado de {getMonthName(mData.month)}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-white">
+                          Total Mes: ${mData.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
+                        {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
+                          const amt = mData.categories?.[cat.id] || 0;
+                          return (
+                            <div key={cat.id} className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs">
+                              <div className="flex items-center gap-1 text-[11px] text-slate-400 truncate">
+                                <span>{cat.icon}</span>
+                                <span className="truncate">{cat.name}</span>
+                              </div>
+                              <div className="font-mono font-bold text-sm text-white mt-1">
+                                ${amt.toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* Tabla de Desglose por Línea de Negocio (Estilo Notion) */}
+          <div className="bg-slate-950 border border-slate-800/80 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <span>📑</span>
+                  Tabla de Desglose por Línea de Negocio (Estilo Notion)
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Detalle consolidado de tickets, volumen emitido y facturación en USD y Bolívares.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/50">
+                    <th className="py-2.5 px-3 text-left">Área / Categoría</th>
+                    <th className="py-2.5 px-3 text-left">Grupo Principal</th>
+                    <th className="py-2.5 px-3 text-right">Facturado ($ USD)</th>
+                    <th className="py-2.5 px-3 text-right">Facturado (Bs.)</th>
+                    <th className="py-2.5 px-3 text-right">% Cuota</th>
+                    <th className="py-2.5 px-3 text-right">Servicios</th>
+                    <th className="py-2.5 px-3 text-right">Clientes Únicos</th>
+                    <th className="py-2.5 px-3 text-right">Ticket Promedio</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {reportData.categoryAnalysis.categoryBreakdown.map((cat: any, idx: number) => (
+                    <tr key={cat.id} className="hover:bg-slate-900/40 transition">
+                      <td className="py-3 px-3 text-left font-sans">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{cat.icon}</span>
+                          <div>
+                            <div className="font-bold text-slate-200 flex items-center gap-1.5">
+                              {cat.name}
+                              {idx === 0 && <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.2 rounded">Líder</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3 text-left font-sans text-slate-400">
+                        {cat.groupName}
+                      </td>
+
+                      <td className="py-3 px-3 text-right font-black text-emerald-400">
+                        ${cat.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      </td>
+
+                      <td className="py-3 px-3 text-right text-slate-300">
+                        Bs. {formatBs(cat.totalBs)}
+                      </td>
+
+                      <td className="py-3 px-3 text-right font-bold text-orange-400">
+                        {cat.percent}%
+                      </td>
+
+                      <td className="py-3 px-3 text-right text-slate-300">
+                        {cat.count}
+                      </td>
+
+                      <td className="py-3 px-3 text-right text-slate-300">
+                        {cat.uniqueClientsCount}
+                      </td>
+
+                      <td className="py-3 px-3 text-right font-bold text-slate-200">
+                        ${cat.avgTicketUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Comparativa Detallada: Mes A vs Mes B (ej. Octubre 2026 vs Octubre 2025) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
