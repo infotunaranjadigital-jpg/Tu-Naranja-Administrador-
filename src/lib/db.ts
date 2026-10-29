@@ -239,4 +239,10 @@ function initSchema(db: DatabaseSync) {
   try {
     db.exec(`ALTER TABLE documents ADD COLUMN net_payable_usd REAL DEFAULT 0`);
   } catch {}
+  try {
+    db.exec(`ALTER TABLE designer_evaluations ADD COLUMN approved_first_time_count INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE designer_evaluations ADD COLUMN clean_rate_percent REAL DEFAULT 0`);
+  } catch {}
 }

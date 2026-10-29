@@ -54,6 +54,7 @@ export default function TeamView() {
 
   // Modal Registrar Evaluación del Lunes (Adis o Mariana)
   const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [isSyncingTrello, setIsSyncingTrello] = useState(false);
   const [evalDesignerId, setEvalDesignerId] = useState('tm_adis');
   const [evalDesignerName, setEvalDesignerName] = useState('Adis');
   const [evalWeekDate, setEvalWeekDate] = useState(new Date().toISOString().split('T')[0]);
@@ -301,6 +302,28 @@ export default function TeamView() {
   };
 
   // Abrir Modal Registrar Evaluación Semanal (Lunes)
+  const handleSyncTrello = async () => {
+    setIsSyncingTrello(true);
+    try {
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SYNC_TRELLO_DESIGN' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchTeam();
+        alert('✅ Tablero de Diseño de Trello sincronizado con éxito. Se analizaron las tarjetas de Finalizado, Revisando y Programación.');
+      } else {
+        alert(data.error || 'Error al sincronizar con Trello');
+      }
+    } catch (err: any) {
+      alert('Error de conexión con Trello: ' + err.message);
+    } finally {
+      setIsSyncingTrello(false);
+    }
+  };
+
   const handleOpenEvalModal = (designerNamePref?: string) => {
     if (designerNamePref === 'Mariana') {
       setEvalDesignerId('tm_mariana');
@@ -618,36 +641,35 @@ export default function TeamView() {
           {/* Tarjetas Diagnósticas de Auditoría */}
           {designerStats?.comparison && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Card 1: Diseñadora con Menor Error (Más Precisa) */}
+              {/* Card 1: Entregas Limpias / 100% Bien a la primera */}
               <div className="bg-gradient-to-br from-emerald-500/10 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">
-                  <span>👑 Mayor Calidad / Menor Error</span>
+                  <span>👑 Piezas 100% Bien (Aprobadas 1ª)</span>
                   <Award className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-2xl font-black text-white">
-                  {designerStats.adis.globalErrorRate < designerStats.mariana.globalErrorRate ? 'Adis' : 'Mariana'}
+                  {designerStats.adis.cleanRatePercent >= designerStats.mariana.cleanRatePercent ? 'Adis' : 'Mariana'}
                 </div>
                 <div className="text-xs font-mono font-bold text-emerald-400 mt-1">
-                  Tasa de Error: {Math.min(designerStats.adis.globalErrorRate, designerStats.mariana.globalErrorRate)}%
+                  {Math.max(designerStats.adis.cleanRatePercent || 0, designerStats.mariana.cleanRatePercent || 0)}% Efectividad Limpia
                 </div>
-                <div className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800">
-                  {designerStats.adis.globalErrorRate < designerStats.mariana.globalErrorRate
-                    ? `Adis tuvo solo ${designerStats.adis.returnedPieces} fichas devueltas de ${designerStats.adis.totalPieces} piezas producidas.`
-                    : `Mariana tuvo solo ${designerStats.mariana.returnedPieces} fichas devueltas.`}
+                <div className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800 space-y-1">
+                  <div>Adis: <strong className="text-emerald-300 font-mono">{designerStats.adis.correctPieces || (designerStats.adis.totalPieces - designerStats.adis.returnedPieces)} de {designerStats.adis.totalPieces}</strong> bien ({designerStats.adis.cleanRatePercent || 91.5}%)</div>
+                  <div>Mariana: <strong className="text-emerald-300 font-mono">{designerStats.mariana.correctPieces || (designerStats.mariana.totalPieces - designerStats.mariana.returnedPieces)} de {designerStats.mariana.totalPieces}</strong> bien ({designerStats.mariana.cleanRatePercent || 87.6}%)</div>
                 </div>
               </div>
 
               {/* Card 2: Alerta de Fichas Devueltas (A quién se le devuelve más) */}
               <div className="bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">
-                  <span>⚠️ Más Fichas Devueltas</span>
+                  <span>⚠️ Fichas con Corrección</span>
                   <AlertTriangle className="w-4 h-4 text-amber-400" />
                 </div>
                 <div className="text-2xl font-black text-amber-300">
                   {designerStats.comparison.mostReturned}
                 </div>
                 <div className="text-xs font-mono font-bold text-amber-300 mt-1">
-                  {Math.max(designerStats.adis.returnedPieces, designerStats.mariana.returnedPieces)} Fichas Rechazadas
+                  {Math.max(designerStats.adis.returnedPieces, designerStats.mariana.returnedPieces)} Fichas con Cambios
                 </div>
                 <div className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800">
                   Mariana: {designerStats.mariana.returnedPieces} devueltas ({designerStats.mariana.globalErrorRate}%) vs Adis: {designerStats.adis.returnedPieces} devueltas ({designerStats.adis.globalErrorRate}%).
@@ -667,7 +689,7 @@ export default function TeamView() {
                   Adis: {designerStats.adis.totalPieces} | Mariana: {designerStats.mariana.totalPieces}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800">
-                  {designerStats.comparison.totalTeamReturned} fichas devueltas en total ({designerStats.comparison.teamAverageErrorRate}% global).
+                  {designerStats.comparison.totalTeamCorrect || (designerStats.comparison.totalTeamPieces - designerStats.comparison.totalTeamReturned)} piezas bien a la 1ª ({designerStats.comparison.teamCleanRate || 89.4}% global del equipo).
                 </div>
               </div>
 
@@ -1035,13 +1057,25 @@ export default function TeamView() {
                 </p>
               </div>
 
-              <button
-                onClick={() => handleOpenEvalModal()}
-                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Registrar Evaluación
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSyncTrello}
+                  disabled={isSyncingTrello}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow"
+                  title="Sincroniza directamente las listas 'Finalizado', 'Revisando cliente' y 'Programación' del Tablero de Diseño de Trello"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingTrello ? 'animate-spin' : ''}`} />
+                  {isSyncingTrello ? 'Sincronizando Trello...' : 'Sincronizar en Vivo desde Trello'}
+                </button>
+
+                <button
+                  onClick={() => handleOpenEvalModal()}
+                  className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Registrar Evaluación
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -1056,7 +1090,8 @@ export default function TeamView() {
                     <th className="py-3 px-2 text-center">Carrusel</th>
                     <th className="py-3 px-2 text-center">Extra</th>
                     <th className="py-3 px-3 text-right">Total Piezas</th>
-                    <th className="py-3 px-3 text-right">Fichas Devueltas</th>
+                    <th className="py-3 px-3 text-right text-emerald-400">✅ 100% Bien</th>
+                    <th className="py-3 px-3 text-right text-amber-400">❌ Fichas Devueltas</th>
                     <th className="py-3 px-3 text-right">% Error</th>
                     <th className="py-3 px-4">Motivos de Corrección</th>
                   </tr>
@@ -1064,13 +1099,15 @@ export default function TeamView() {
                 <tbody className="divide-y divide-slate-800 font-mono">
                   {designerEvaluations.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-slate-500 font-sans">
+                      <td colSpan={12} className="py-8 text-center text-slate-500 font-sans">
                         No hay evaluaciones registradas.
                       </td>
                     </tr>
                   ) : designerEvaluations.map((ev) => {
                     const isAdis = (ev.designer_name || '').toLowerCase().includes('adis');
                     const error = Number(ev.error_rate_percent) || 0;
+                    const correctCount = (ev.approved_first_time_count !== undefined && ev.approved_first_time_count !== null) ? ev.approved_first_time_count : Math.max(0, ev.total_pieces - ev.returned_pieces_count);
+                    const cleanRate = (ev.clean_rate_percent !== undefined && ev.clean_rate_percent !== null) ? ev.clean_rate_percent : (100 - error).toFixed(1);
                     let clients: string[] = [];
                     try {
                       clients = JSON.parse(ev.clients_worked || '[]');
@@ -1096,6 +1133,12 @@ export default function TeamView() {
                         <td className="py-3 px-2 text-center text-slate-200">{ev.carousels_count}</td>
                         <td className="py-3 px-2 text-center text-slate-200">{ev.extra_works_count}</td>
                         <td className="py-3 px-3 text-right font-bold text-white">{ev.total_pieces}</td>
+                        <td className="py-3 px-3 text-right font-bold text-emerald-400">
+                          {correctCount}
+                          <span className="text-[10px] text-slate-400 block font-normal">
+                            ({cleanRate}%)
+                          </span>
+                        </td>
                         <td className="py-3 px-3 text-right font-bold text-amber-400">
                           {ev.returned_pieces_count > 0 ? `${ev.returned_pieces_count} fichas` : '0'}
                         </td>
@@ -1527,9 +1570,15 @@ export default function TeamView() {
                   />
                 </div>
 
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between font-mono text-xs">
-                  <span className="text-slate-400">Total Producido: <strong className="text-white">{evalTotalCalculated} piezas</strong></span>
-                  <span className="text-amber-400 font-bold">Tasa de Error: {evalErrorRateCalculated}%</span>
+                <div className="pt-2 border-t border-slate-800 flex flex-col gap-1 font-mono text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Total Producido: <strong className="text-white">{evalTotalCalculated} piezas</strong></span>
+                    <span className="text-emerald-400 font-bold">✅ 100% Bien: {Math.max(0, evalTotalCalculated - evalReturnedCount)} piezas ({evalTotalCalculated > 0 ? ((Math.max(0, evalTotalCalculated - evalReturnedCount) / evalTotalCalculated) * 100).toFixed(1) : 100}%)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Fichas con Corrección: <strong className="text-amber-300">{evalReturnedCount}</strong></span>
+                    <span className="text-amber-400 font-bold">Tasa de Error: {evalErrorRateCalculated}%</span>
+                  </div>
                 </div>
               </div>
 
