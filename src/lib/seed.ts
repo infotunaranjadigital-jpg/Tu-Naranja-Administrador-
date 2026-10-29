@@ -933,8 +933,9 @@ export function syncHistoricalDocuments() {
       { id: 'doc_2026_10_04', type: 'RECIBO', num: 361, client: 'dra-dama', date: '2026-10-01', rate: 888.12, total: 250, items: [
         { description: 'Manejo de Redes Sociales Médicas', category: 'MARKETING_RRSS', unit: 'Servicio', quantity: 1, amount: 250 }
       ]},
-      { id: 'doc_2026_10_05', type: 'RECIBO', num: 362, client: 'english-lab', date: '2026-10-18', rate: 888.12, total: 600, items: [
-        { description: 'Desarrollo Web y Portal Educativo', category: 'DESARROLLO', unit: 'Portal', quantity: 1, amount: 600 }
+      { id: 'doc_2026_10_05', type: 'RECIBO', num: 362, client: 'sovemo', date: '2026-10-24', rate: 888.12, total: 660, items: [
+        { description: 'Cobertura presencial evento médico SOVEMO (2 días)', category: 'GRABACIONES', unit: 'Jornada', quantity: 2, amount: 460 },
+        { description: 'Pauta publicitaria y difusión digital (2 días)', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 200 }
       ]}
     ];
 
@@ -956,5 +957,36 @@ export function syncHistoricalDocuments() {
       );
     }
     console.log(`Seeded ${historical.length} categorized historical documents.`);
+  }
+
+  // Asegurar siempre corrección de SOVEMO (cobertura + pauta 2 días por $660) en Octubre 2026
+  const existingDoc1005 = db.prepare('SELECT client_id FROM documents WHERE id = ?').get('doc_2026_10_05') as any;
+  if (existingDoc1005?.client_id === 'english-lab' || !existingDoc1005) {
+    const rate = 888.12;
+    const total = 660;
+    const subtotalBs = Number((total * rate).toFixed(2));
+    const items = [
+      { description: 'Cobertura presencial evento médico SOVEMO (2 días)', category: 'GRABACIONES', unit: 'Jornada', quantity: 2, amount: 460 },
+      { description: 'Pauta publicitaria y difusión digital (2 días)', category: 'MARKETING_ADS', unit: 'Campaña', quantity: 1, amount: 200 }
+    ];
+    db.prepare(`
+      INSERT OR REPLACE INTO documents (
+        id, doc_type, doc_number, client_id, issue_date, due_date,
+        status, payment_status, currency, total_amount_currency,
+        rate_type_applied, applied_rate, bcv_rate_at_issue,
+        subtotal_bs, iva_rate, iva_amount_bs, total_bs_applied,
+        base_bs_bcv, base_usd_bcv, items_json, notes, payment_method, paid_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'doc_2026_10_05', 'RECIBO', 362, 'sovemo', '2026-10-24', '2026-10-24',
+      'EMITTED', 'PAID', 'USD', total,
+      'BCV', rate, rate,
+      subtotalBs, 0, 0, subtotalBs,
+      subtotalBs, total,
+      JSON.stringify(items),
+      'Cobertura presencial y pauta de 2 días SOVEMO ($660)',
+      'TRANSFERENCIA_BS', '2026-10-24'
+    );
+    console.log('Synchronized real SOVEMO 2-day coverage & pauta ($660) for October.');
   }
 }
