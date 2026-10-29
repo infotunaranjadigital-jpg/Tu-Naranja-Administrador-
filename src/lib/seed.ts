@@ -385,6 +385,8 @@ export function seedDatabase() {
 
   // Siempre sincronizar el equipo canónico actualizado sin duplicados
   syncCanonicalTeam();
+  // Sincronizar listado oficial de RIFs de clientes
+  syncCanonicalClients();
 }
 
 export function syncCanonicalTeam() {
@@ -504,4 +506,69 @@ export function syncCanonicalTeam() {
     );
   }
   console.log('Canonical team synchronized: Isabelle, Angie, Adis, Mariana, Eleonora.');
+}
+
+export function syncCanonicalClients() {
+  const db = getDb();
+  
+  // Mapeo oficial de RIFs extraídos del Listado Oficial del cliente
+  const updates: Record<string, { rif: string; business_name?: string }> = {
+    'sovemo': { rif: 'J-30327967-8', business_name: 'SOC. VEN. DE MENOPAUSIA Y OSTEOPOROSIS - SOVEMO' },
+    'english-lab': { rif: 'J-30707830-8', business_name: 'English Lab' },
+    'mantica': { rif: 'J-00059876-2', business_name: 'Materno Infantil C.A (MANTICA)' },
+    'cc-garcia': { rif: 'J-31275024-3, J-31273093-5', business_name: 'Centro Ceramico Garcia I, C.A.' },
+    'soc-oncologia': { rif: 'J-00257350-3', business_name: 'Sociedad Venezolana de Oncologia (SVO)' },
+    'soc-mastologia': { rif: 'J-00331364-5', business_name: 'Sociedad Venezolana de Mastologia (SVM)' },
+    'fototecno': { rif: 'J-50765898-2', business_name: 'FotoTecno' },
+    'dra-virginia': { rif: 'V-06820047-0', business_name: 'Dra. Virginia' },
+    'arias-doc': { rif: 'V-11312990-1, V-06625245-7, V-03120276-7', business_name: 'Arias DOC' },
+    'dra-fanny-toro': { rif: 'V-13872720-0', business_name: 'Dra. Fanny Toro' },
+    'dr-gerardo': { rif: 'V-9486579-0', business_name: 'Dr. Gerardo' },
+    'los-rosales': { rif: 'J-50706696-7', business_name: 'Autorepuestos Los Rosales C.A.' },
+    'fetal-care': { rif: '', business_name: 'Fetal Care C.A. (Sin RIF)' },
+    'feminaid': { rif: 'J-50125683-7', business_name: 'Servicios Feminaid 2021 CA' }
+  };
+
+  const updateStmt = db.prepare('UPDATE clients SET rif = ?, business_name = COALESCE(?, business_name) WHERE id = ?');
+  for (const [id, data] of Object.entries(updates)) {
+    updateStmt.run(data.rif, data.business_name || null, id);
+  }
+
+  // Odontólogo / Arinita (Convenio especial con ambos RIFs)
+  const arianita = db.prepare('SELECT id FROM clients WHERE id = ?').get('arianita');
+  if (arianita) {
+    updateStmt.run('V-15200632-9, J-50811817-0', 'Odontólogo / Arinita', 'arianita');
+  } else {
+    db.prepare(`
+      INSERT INTO clients (
+        id, name, business_name, rif, phone, email, address,
+        default_currency, base_monthly_fee, meta_ads_budget,
+        default_rate_type, billing_day, preferred_document, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'arianita', 'Odontólogo / Arinita', 'Odontólogo / Arinita', 'V-15200632-9, J-50811817-0',
+      '', '', 'Caracas, Venezuela',
+      'USD', 170.0, 0, 'BCV', 1, 'RECIBO', 'Convenio especial Odontólogo / Arinita.'
+    );
+  }
+
+  // Dra DAMA
+  const draDama = db.prepare('SELECT id FROM clients WHERE id = ?').get('dra-dama');
+  if (draDama) {
+    updateStmt.run('V-13721648-1', 'Dra. Dama', 'dra-dama');
+  } else {
+    db.prepare(`
+      INSERT INTO clients (
+        id, name, business_name, rif, phone, email, address,
+        default_currency, base_monthly_fee, meta_ads_budget,
+        default_rate_type, billing_day, preferred_document, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'dra-dama', 'Dra DAMA', 'Dra. Dama', 'V-13721648-1',
+      '', '', 'Caracas, Venezuela',
+      'USD', 150.0, 0, 'BCV', 1, 'RECIBO', 'Cliente médico.'
+    );
+  }
+
+  console.log('Canonical clients RIFs synchronized successfully.');
 }
