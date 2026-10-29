@@ -5,7 +5,8 @@ import {
   BarChart3, Download, Calendar, DollarSign, 
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
   ShieldCheck, History, Award, AlertCircle, RefreshCw,
-  Sparkles, CheckCircle2, ChevronDown, ChevronUp, Info, Handshake
+  Sparkles, CheckCircle2, ChevronDown, ChevronUp, Info, Handshake,
+  Search, ArrowUpDown, Filter
 } from 'lucide-react';
 
 export default function ReportsView() {
@@ -25,6 +26,10 @@ export default function ReportsView() {
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showForecastList, setShowForecastList] = useState(false);
+
+  // Filtro y ordenamiento en tabla de clientes
+  const [tableSearch, setTableSearch] = useState('');
+  const [tableSort, setTableSort] = useState<'fee_desc' | 'fee_asc' | 'invoiced_desc' | 'invoiced_asc' | 'docs_desc' | 'name_asc'>('fee_desc');
 
   const fetchReports = async () => {
     setLoading(true);
@@ -104,6 +109,36 @@ export default function ReportsView() {
 
   const monthlySeries = reportData?.monthlySeries || [];
   const maxSeriesVal = Math.max(...monthlySeries.map((s: any) => s.total_base_usd_bcv || 0), 100);
+
+  const sortedClientBreakdown = (reportData?.clientBreakdown || [])
+    .filter((c: any) => {
+      const term = tableSearch.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(term) ||
+        (c.business_name || '').toLowerCase().includes(term)
+      );
+    })
+    .sort((a: any, b: any) => {
+      if (tableSort === 'fee_desc') {
+        return (Number(b.base_monthly_fee) || 0) - (Number(a.base_monthly_fee) || 0);
+      }
+      if (tableSort === 'fee_asc') {
+        return (Number(a.base_monthly_fee) || 0) - (Number(b.base_monthly_fee) || 0);
+      }
+      if (tableSort === 'invoiced_desc') {
+        return (Number(b.total_base_usd_bcv) || 0) - (Number(a.total_base_usd_bcv) || 0);
+      }
+      if (tableSort === 'invoiced_asc') {
+        return (Number(a.total_base_usd_bcv) || 0) - (Number(b.total_base_usd_bcv) || 0);
+      }
+      if (tableSort === 'docs_desc') {
+        return (Number(b.doc_count) || 0) - (Number(a.doc_count) || 0);
+      }
+      if (tableSort === 'name_asc') {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
 
   return (
     <div className="space-y-6">
@@ -317,7 +352,9 @@ export default function ReportsView() {
                 Listado Detallado de Clientes en el Pronóstico ({reportData.monthlyForecast.forecastClientsList.length} clientes regulares)
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {reportData.monthlyForecast.forecastClientsList.map((fc: any) => (
+                {[...reportData.monthlyForecast.forecastClientsList]
+                  .sort((a: any, b: any) => (Number(b.agency_net_usd) || 0) - (Number(a.agency_net_usd) || 0))
+                  .map((fc: any) => (
                   <div key={fc.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-slate-200">{fc.name}</div>
@@ -578,25 +615,89 @@ export default function ReportsView() {
 
       {/* Breakdown per client table in this range */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-            Detalle por Cliente en el Período Seleccionado
-          </h3>
-          <span className="text-xs text-slate-400">
-            {startDate} al {endDate}
-          </span>
+        <div className="p-4 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+              Detalle por Cliente en el Período ({sortedClientBreakdown.length} de {reportData?.clientBreakdown?.length || 0})
+            </h3>
+            <p className="text-xs text-slate-400">
+              Rango: {startDate} al {endDate}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Buscador de tabla */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                placeholder="Filtrar por cliente..."
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none focus:border-orange-500 w-44 sm:w-52"
+              />
+            </div>
+
+            {/* Selector de ordenamiento */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-slate-400 font-semibold flex items-center gap-1">
+                <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
+                Ordenar:
+              </span>
+              <select
+                value={tableSort}
+                onChange={(e: any) => setTableSort(e.target.value)}
+                className="bg-slate-950 border border-emerald-500/40 text-emerald-300 font-bold rounded-xl px-2.5 py-1.5 text-xs outline-none focus:border-emerald-400"
+              >
+                <option value="fee_desc">💰 Mayor Tarifa Primero ($$$ ➔ $)</option>
+                <option value="fee_asc">Tarifa Menor Primero ($ ➔ $$$)</option>
+                <option value="invoiced_desc">Mayor Facturado ($ BCV)</option>
+                <option value="invoiced_asc">Menor Facturado ($ BCV)</option>
+                <option value="docs_desc">Más Facturas / Recibos</option>
+                <option value="name_asc">Nombre Alfabético (A ➔ Z)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-bold text-[10px] border-b border-slate-800">
+            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-bold text-[10px] border-b border-slate-800 select-none">
               <tr>
-                <th className="py-3 px-4">Cliente</th>
-                <th className="py-3 px-4 text-center">Tarifa Actual</th>
-                <th className="py-3 px-4 text-center">Facturas/Recibos</th>
+                <th 
+                  onClick={() => setTableSort(tableSort === 'name_asc' ? 'fee_desc' : 'name_asc')}
+                  className="py-3 px-4 cursor-pointer hover:text-white transition"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Cliente {tableSort === 'name_asc' ? '▲' : ''}
+                  </span>
+                </th>
+                <th 
+                  onClick={() => setTableSort(tableSort === 'fee_desc' ? 'fee_asc' : 'fee_desc')}
+                  className="py-3 px-4 text-center cursor-pointer hover:text-emerald-400 transition"
+                >
+                  <span className="inline-flex items-center gap-1 justify-center">
+                    Tarifa Actual {tableSort === 'fee_desc' ? '▼' : tableSort === 'fee_asc' ? '▲' : ''}
+                  </span>
+                </th>
+                <th 
+                  onClick={() => setTableSort(tableSort === 'docs_desc' ? 'fee_desc' : 'docs_desc')}
+                  className="py-3 px-4 text-center cursor-pointer hover:text-white transition"
+                >
+                  <span className="inline-flex items-center gap-1 justify-center">
+                    Facturas/Recibos {tableSort === 'docs_desc' ? '▼' : ''}
+                  </span>
+                </th>
                 <th className="py-3 px-4 text-right">Total Bs Liquidado</th>
                 <th className="py-3 px-4 text-right">Base Oficial BCV (Bs)</th>
-                <th className="py-3 px-4 text-right">Base Oficial ($ BCV)</th>
+                <th 
+                  onClick={() => setTableSort(tableSort === 'invoiced_desc' ? 'invoiced_asc' : 'invoiced_desc')}
+                  className="py-3 px-4 text-right cursor-pointer hover:text-amber-400 transition"
+                >
+                  <span className="inline-flex items-center gap-1 justify-end">
+                    Base Oficial ($ BCV) {tableSort === 'invoiced_desc' ? '▼' : tableSort === 'invoiced_asc' ? '▲' : ''}
+                  </span>
+                </th>
                 <th className="py-3 px-4 text-center">Último Ajuste Tarifa</th>
               </tr>
             </thead>
@@ -605,7 +706,13 @@ export default function ReportsView() {
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-500">Cargando reporte...</td>
                 </tr>
-              ) : reportData?.clientBreakdown?.map((c: any) => (
+              ) : sortedClientBreakdown.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-500">
+                    No se encontraron clientes con el filtro aplicado.
+                  </td>
+                </tr>
+              ) : sortedClientBreakdown.map((c: any) => (
                 <tr key={c.id} className="hover:bg-slate-850/60 transition">
                   <td className="py-3.5 px-4 font-semibold text-slate-200">
                     <div className="flex items-center gap-2 flex-wrap">

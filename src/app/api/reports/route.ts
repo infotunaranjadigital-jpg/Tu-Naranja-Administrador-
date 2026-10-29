@@ -155,7 +155,7 @@ export async function GET(req: Request) {
   // 6. Pronóstico de Ingreso Mensual Recurrente (MRR)
   // Excluye clientes por acuerdos o convenios especiales.
   // En Autopartes Los Rosales ($200 efectivo), $100 corresponden a Isa y $100 a la agencia.
-  const allActiveClients = db.prepare('SELECT * FROM clients WHERE active = 1 ORDER BY billing_day ASC, name ASC').all() as any[];
+  const allActiveClients = db.prepare('SELECT * FROM clients WHERE active = 1 ORDER BY base_monthly_fee DESC, name ASC').all() as any[];
   
   let bcvRate = 888.12;
   const latestRateRow = db.prepare('SELECT bcv_usd FROM exchange_rates ORDER BY date DESC LIMIT 1').get() as any;

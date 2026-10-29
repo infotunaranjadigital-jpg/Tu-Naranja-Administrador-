@@ -15,7 +15,7 @@ export async function GET(req: Request) {
       (SELECT SUM(base_bs_bcv) FROM documents WHERE client_id = c.id AND strftime('%Y', issue_date) = strftime('%Y', 'now')) as annual_invoiced_base_bs,
       (SELECT SUM(base_usd_bcv) FROM documents WHERE client_id = c.id AND strftime('%Y', issue_date) = strftime('%Y', 'now')) as annual_invoiced_base_usd
     FROM clients c
-    ORDER BY c.billing_day ASC, c.name ASC
+    ORDER BY c.base_monthly_fee DESC, c.name ASC
   `);
 
   const clients = stmt.all();
