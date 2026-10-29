@@ -377,6 +377,39 @@ export async function POST(req: Request) {
         };
       }
 
+      function getMondayOfDate(d: string | Date) {
+        const date = new Date(d);
+        const day = date.getUTCDay();
+        const diff = date.getUTCDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date.setDate(diff));
+        return monday.toISOString().slice(0, 10);
+      }
+
+      function extractDate(title: string, due?: string, lastAct?: string) {
+        const norm = normalizeUnicode(title);
+        const monthMap: Record<string, string> = { 'octubre': '10', 'noviembre': '11', 'diciembre': '12', 'enero': '01' };
+        
+        // 1. vence DD de MMMM
+        const venceMatch = norm.match(/vence\s+(\d{1,2})\s+de\s+(octubre|noviembre|diciembre)/);
+        if (venceMatch) {
+          const day = venceMatch[1].padStart(2, '0');
+          const month = monthMap[venceMatch[2]] || '10';
+          return getMondayOfDate(`2026-${month}-${day}T12:00:00Z`);
+        }
+
+        // 2. meta DD de MMMM
+        const metaMatch = norm.match(/meta\s+(\d{1,2})\s+de\s+(octubre|noviembre|diciembre)/);
+        if (metaMatch) {
+          const day = metaMatch[1].padStart(2, '0');
+          const month = monthMap[metaMatch[2]] || '10';
+          return getMondayOfDate(`2026-${month}-${day}T12:00:00Z`);
+        }
+
+        if (due) return getMondayOfDate(due);
+        if (lastAct) return getMondayOfDate(lastAct);
+        return '2026-10-26';
+      }
+
       const memberMap: Record<string, string> = {};
       for (const m of (membersRes || [])) {
         memberMap[m.id] = (m.fullName || m.username || '').toLowerCase();
@@ -390,15 +423,32 @@ export async function POST(req: Request) {
         }
       }
 
-      const summary = {
-        adis: { totalPieces: 0, posts: 0, stories: 0, reels: 0, returned: 0, correct: 0, clients: new Set<string>() },
-        mariana: { totalPieces: 0, posts: 0, stories: 0, reels: 0, returned: 0, correct: 0, clients: new Set<string>() }
-      };
+      // Agrupación estricta por semana de trabajo (Lunes a Lunes)
+      interface WeeklyStat {
+        designer: 'Adis' | 'Mariana';
+        monday: string;
+        total: number;
+        posts: number;
+        stories: number;
+        reels: number;
+        returned: number;
+        clients: Set<string>;
+      }
+
+      const weeklyMap: Record<string, WeeklyStat> = {};
 
       for (const c of (cardsRes || [])) {
         if (!targetListIds.has(c.idList)) continue;
         const normName = normalizeUnicode(c.name);
-        if (normName.startsWith('actividades finalizadas') || normName.startsWith('urgentes') || normName.startsWith('pasada') || normName.startsWith('actual') || normName.startsWith('instagram') || normName.startsWith('revision de clientes') || normName.startsWith('otras cosas')) {
+        if (
+          normName.startsWith('actividades finalizadas') || 
+          normName.startsWith('urgentes') || 
+          normName.startsWith('pasada') || 
+          normName.startsWith('actual') || 
+          normName.startsWith('instagram') || 
+          normName.startsWith('revision de clientes') || 
+          normName.startsWith('otras cosas')
+        ) {
           continue;
         }
 
@@ -407,22 +457,39 @@ export async function POST(req: Request) {
         const isMariana = assigned.some((a: string) => a.includes('marianna') || a.includes('mariana'));
         if (!isAdis && !isMariana) continue;
 
+        const designer = isAdis ? 'Adis' : 'Mariana';
+        const monday = extractDate(c.name, c.due, c.dateLastActivity);
+        const key = `${designer}_${monday}`;
+
+        if (!weeklyMap[key]) {
+          weeklyMap[key] = {
+            designer,
+            monday,
+            total: 0,
+            posts: 0,
+            stories: 0,
+            reels: 0,
+            returned: 0,
+            clients: new Set<string>()
+          };
+        }
+
         const p = parsePieces(c.name);
-        const target = isAdis ? summary.adis : summary.mariana;
-        target.totalPieces += p.totalPieces;
-        target.posts += p.posts;
-        target.stories += p.stories;
-        target.reels += p.reels;
-        target.returned += p.corrections;
-        target.correct += Math.max(0, p.totalPieces - p.corrections);
+        weeklyMap[key].total += p.totalPieces;
+        weeklyMap[key].posts += p.posts;
+        weeklyMap[key].stories += p.stories;
+        weeklyMap[key].reels += p.reels;
+        weeklyMap[key].returned += p.corrections;
 
-        const clientClean = c.name.split(/[0-9\/\-\(\[\+]/)[0].replace(/[\u{1D400}-\u{1D7FF}]/gu, '').trim();
-        if (clientClean) target.clients.add(clientClean);
+        const cleanClient = normalizeUnicode(c.name)
+          .split(/[0-9\/\-\(\[\+]/)[0]
+          .replace(/[\u{1D400}-\u{1D7FF}]/gu, '')
+          .trim();
+        if (cleanClient && cleanClient.length > 2) {
+          const capitalized = cleanClient.charAt(0).toUpperCase() + cleanClient.slice(1);
+          weeklyMap[key].clients.add(capitalized);
+        }
       }
-
-      // Guardar evaluación consolidada en vivo de Trello
-      const todayLunes = '2026-10-26'; // Lunes de corte actual
-      const weekLabel = 'Corte en Vivo Trello (Finalizado / Revisando / Programado)';
 
       const upsertStmt = db.prepare(`
         INSERT OR REPLACE INTO designer_evaluations (
@@ -434,41 +501,45 @@ export async function POST(req: Request) {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      // Adis
-      const adisTotal = summary.adis.totalPieces;
-      const adisErrorRate = adisTotal > 0 ? Number(((summary.adis.returned / adisTotal) * 100).toFixed(1)) : 0;
-      const adisCleanRate = adisTotal > 0 ? Number(((summary.adis.correct / adisTotal) * 100).toFixed(1)) : 100;
-      upsertStmt.run(
-        'eval_trello_live_adis', 'tm_adis', 'Adis', todayLunes, weekLabel,
-        JSON.stringify(Array.from(summary.adis.clients)),
-        summary.adis.posts, summary.adis.reels, summary.adis.stories, 0,
-        adisTotal, summary.adis.returned, summary.adis.correct, adisCleanRate,
-        adisErrorRate,
-        'Auditoría sincronizada automáticamente en vivo desde Trello (Tablero Departamento de Diseño).',
-        `Adis obtuvo ${summary.adis.correct} piezas 100% bien (${adisCleanRate}% efectividad limpia) y ${summary.adis.returned} correcciones.`
-      );
+      const weeksProcessed: any[] = [];
 
-      // Mariana
-      const marianaTotal = summary.mariana.totalPieces;
-      const marianaErrorRate = marianaTotal > 0 ? Number(((summary.mariana.returned / marianaTotal) * 100).toFixed(1)) : 0;
-      const marianaCleanRate = marianaTotal > 0 ? Number(((summary.mariana.correct / marianaTotal) * 100).toFixed(1)) : 100;
-      upsertStmt.run(
-        'eval_trello_live_mariana', 'tm_mariana', 'Mariana', todayLunes, weekLabel,
-        JSON.stringify(Array.from(summary.mariana.clients)),
-        summary.mariana.posts, summary.mariana.reels, summary.mariana.stories, 0,
-        marianaTotal, summary.mariana.returned, summary.mariana.correct, marianaCleanRate,
-        marianaErrorRate,
-        'Auditoría sincronizada automáticamente en vivo desde Trello (Tablero Departamento de Diseño).',
-        `Mariana obtuvo ${summary.mariana.correct} piezas 100% bien (${marianaCleanRate}% efectividad limpia) y ${summary.mariana.returned} correcciones.`
-      );
+      for (const key of Object.keys(weeklyMap).sort()) {
+        const item = weeklyMap[key];
+        const correct = Math.max(0, item.total - item.returned);
+        const cleanRate = item.total > 0 ? Number(((correct / item.total) * 100).toFixed(1)) : 100;
+        const errorRate = item.total > 0 ? Number(((item.returned / item.total) * 100).toFixed(1)) : 0;
+        const memberId = item.designer === 'Adis' ? 'tm_adis' : 'tm_mariana';
+        const evalId = `eval_trello_${item.designer.toLowerCase()}_${item.monday}`;
+        const weekLabel = `Semana del ${item.monday}`;
+
+        upsertStmt.run(
+          evalId, memberId, item.designer, item.monday, weekLabel,
+          JSON.stringify(Array.from(item.clients)),
+          item.posts, item.reels, item.stories, 0,
+          item.total, item.returned, correct, cleanRate,
+          errorRate,
+          `Auditoría Trello: ${item.returned} piezas con corrección en listas Finalizado/Programado/Revisando.`,
+          `${item.designer} entregó ${correct} de ${item.total} piezas 100% bien (${cleanRate}% efectividad limpia).`
+        );
+
+        weeksProcessed.push({
+          evalId,
+          designer: item.designer,
+          monday: item.monday,
+          total: item.total,
+          correct,
+          returned: item.returned,
+          cleanRate,
+          errorRate,
+          clients: Array.from(item.clients)
+        });
+      }
 
       return NextResponse.json({
         success: true,
-        message: 'Tablero de Diseño de Trello sincronizado con éxito',
-        summary: {
-          adis: { ...summary.adis, cleanRate: adisCleanRate, errorRate: adisErrorRate, clients: Array.from(summary.adis.clients) },
-          mariana: { ...summary.mariana, cleanRate: marianaCleanRate, errorRate: marianaErrorRate, clients: Array.from(summary.mariana.clients) }
-        }
+        message: 'Tablero de Diseño de Trello sincronizado por semanas de trabajo (~50 piezas/semana)',
+        weeksCount: weeksProcessed.length,
+        weeks: weeksProcessed
       });
     }
 

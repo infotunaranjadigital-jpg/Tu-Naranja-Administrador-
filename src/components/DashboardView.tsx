@@ -157,8 +157,23 @@ export default function DashboardView({
                     </div>
 
                     <div>
-                      <div className="font-semibold text-slate-100 flex items-center gap-2 text-sm">
+                      <div className="font-semibold text-slate-100 flex items-center gap-2 text-sm flex-wrap">
                         {c.name}
+                        {c.id === 'los-rosales' && (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                            🤝 $100 Isa / $100 Agencia
+                          </span>
+                        )}
+                        {c.id === 'odontologo-rony' && (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                            🤝 $100 Isa BCV / $150 Agencia
+                          </span>
+                        )}
+                        {c.id === 'arinita' && (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                            📦 $85 Mercancía c/u (Sin pago a Isa)
+                          </span>
+                        )}
                         {c.preferred_document === 'FORMA_LIBRE' ? (
                           <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono">
                             Forma Libre

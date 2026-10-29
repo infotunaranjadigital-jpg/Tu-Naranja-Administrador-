@@ -245,4 +245,45 @@ function initSchema(db: DatabaseSync) {
   try {
     db.exec(`ALTER TABLE designer_evaluations ADD COLUMN clean_rate_percent REAL DEFAULT 0`);
   } catch {}
+
+  // Garantizar separación absoluta y nombres canónicos de Arinita y Odontólogo (Dr. Rony)
+  try {
+    db.exec(`UPDATE documents SET client_id = 'arinita' WHERE client_id IN ('arianita', 'odontologo-arinita')`);
+  } catch {}
+  try {
+    db.exec(`
+      DELETE FROM clients WHERE id IN ('arianita', 'odontologo-arinita')
+        OR (name LIKE '%Arinita%' AND id != 'arinita') 
+        OR (name LIKE '%Odont%' AND name LIKE '%Arinita%')
+        OR (name LIKE '%Odontologo / Arinita%')
+        OR (name LIKE '%Odontólogo / Arinita%');
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      UPDATE clients SET 
+        name = 'Arinita',
+        business_name = 'Arinita',
+        base_monthly_fee = 170.0
+      WHERE id = 'arinita';
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      UPDATE clients SET 
+        name = 'Odontólogo (Dr. Rony)',
+        business_name = 'Odontólogo (Dr. Rony)',
+        base_monthly_fee = 250.0
+      WHERE id = 'odontologo-rony';
+    `);
+  } catch {}
+  try {
+    db.exec(`UPDATE clients SET base_monthly_fee = 150.0 WHERE id = 'sovemo'`);
+  } catch {}
+  try {
+    db.exec(`UPDATE clients SET base_monthly_fee = 170.0 WHERE id = 'cc-garcia'`);
+  } catch {}
+  try {
+    db.exec(`UPDATE clients SET base_monthly_fee = 250.0 WHERE id = 'dra-dama'`);
+  } catch {}
 }
