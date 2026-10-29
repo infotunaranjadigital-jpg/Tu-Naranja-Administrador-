@@ -342,7 +342,7 @@ export function seedDatabase() {
         default_rate_type: "BCV",
         billing_day: 1,
         preferred_document: "RECIBO",
-        notes: "Cliente por acuerdo compartido con Isabelle ($170 total)."
+        notes: "Acuerdo de intercambio ($170 en mercancía). Los 2 reciben $85 en mercancía cada uno ($85 Isa / $85 Agencia). Sin pago en dinero a Isabelle."
       },
       {
         id: "odontologo-rony",
@@ -729,14 +729,14 @@ export function syncCanonicalClients() {
         rif = 'J-50811817-0',
         base_monthly_fee = 170.0,
         default_rate_type = 'BCV',
-        notes = 'Cliente por acuerdo compartido con Isabelle ($170 total).'
+        notes = 'Acuerdo de intercambio ($170 en mercancía). Los 2 reciben $85 en mercancía cada uno ($85 Isa / $85 Agencia). Sin pago en dinero a Isabelle.'
       WHERE id = 'arinita'
     `).run();
   } else {
     insertClientStmt.run(
       'arinita', 'Arinita', 'Arinita', 'J-50811817-0',
       '', '', 'Caracas, Venezuela', 'USD', 170.0, 0, 'BCV', 1, 'RECIBO',
-      'Cliente por acuerdo compartido con Isabelle ($170 total).',
+      'Acuerdo de intercambio ($170 en mercancía). Los 2 reciben $85 en mercancía cada uno ($85 Isa / $85 Agencia). Sin pago en dinero a Isabelle.',
       0, 0, 0
     );
   }

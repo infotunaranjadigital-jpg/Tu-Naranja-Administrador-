@@ -288,7 +288,7 @@ export default function ReportsView() {
             {/* Deducciones / Pagos Compartidos a Isabelle */}
             <div className="bg-slate-950/70 border border-amber-500/30 p-4 rounded-xl">
               <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-1">
-                <span>Pagos a Isabelle (Compartidos)</span>
+                <span>Pagos en Dinero a Isa</span>
                 <Handshake className="w-3.5 h-3.5 text-amber-400" />
               </div>
               <div className="text-2xl font-black text-amber-300 font-mono">
@@ -296,10 +296,10 @@ export default function ReportsView() {
                 <span className="text-xs font-sans text-amber-400/80">USD</span>
               </div>
               <p className="text-xs text-amber-200/90 font-medium mt-1">
-                Autopartes ($100), Rony ($100 a BCV), Arinita ($85)
+                Autopartes ($100 efectivo) + Rony ($100 BCV)
               </p>
               <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                Deducido automáticamente del neto de agencia
+                Arinita: $85 en mercancía directa a Isa (sin pago de dinero)
               </div>
             </div>
 
@@ -345,11 +345,11 @@ export default function ReportsView() {
             </div>
 
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
-              <span className="text-base leading-none">🤝</span>
+              <span className="text-base leading-none">📦</span>
               <div className="text-xs">
-                <span className="font-bold text-amber-300 block mb-0.5">Arinita ($170 Compartido)</span>
+                <span className="font-bold text-amber-300 block mb-0.5">Arinita ($170 en Mercancía)</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Acuerdo de <strong>$170</strong> compartido con Isabelle (<strong>$85</strong> Isa / <strong>$85</strong> Agencia).
+                  Acuerdo de intercambio: Los 2 reciben <strong>$85 en mercancía cada uno</strong> ($85 Isa / $85 Agencia). <strong>No hay desembolso de dinero a Isabelle</strong>.
                 </p>
               </div>
             </div>
@@ -378,10 +378,17 @@ export default function ReportsView() {
                       )}
                     </div>
                     <div className="text-right font-mono">
-                      <div className="font-black text-emerald-400">${fc.agency_net_usd} <span className="text-[10px] font-normal text-slate-400">Neto</span></div>
-                      {fc.shared_isa_usd > 0 && (
+                      <div className="font-black text-emerald-400">
+                        ${fc.agency_net_usd}{' '}
+                        <span className="text-[10px] font-normal text-slate-400">
+                          {fc.id === 'arinita' ? 'Mercancía' : 'Neto'}
+                        </span>
+                      </div>
+                      {fc.shared_isa_usd > 0 ? (
                         <div className="text-[10px] text-amber-400">($100 Isa)</div>
-                      )}
+                      ) : fc.id === 'arinita' ? (
+                        <div className="text-[10px] text-amber-300">($85 Mercancía Isa)</div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -739,7 +746,7 @@ export default function ReportsView() {
                       )}
                       {c.id === 'arinita' && (
                         <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
-                          🤝 $170 Compartido con Isa
+                          📦 Intercambio: $85 Mercancía c/u (Sin pago a Isa)
                         </span>
                       )}
                       {(c.is_withholding_agent === 1 || c.id === 'mantica' || c.id === 'cc-garcia') && (

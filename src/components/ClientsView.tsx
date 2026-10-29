@@ -457,10 +457,10 @@ export default function ClientsView({
                 </div>
               ) : client.id === 'arinita' ? (
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-200 mb-3 flex items-start gap-2">
-                  <span className="shrink-0 text-base leading-none">🤝</span>
+                  <span className="shrink-0 text-base leading-none">📦</span>
                   <div>
-                    <span className="font-bold text-amber-300 block">Acuerdo Compartido con Isabelle:</span>
-                    <span>Cobro de $170 compartido con Isabelle ($85 Isa / $85 Agencia).</span>
+                    <span className="font-bold text-amber-300 block">Acuerdo de Intercambio en Mercancía ($170):</span>
+                    <span>Tanto Isabelle como la agencia reciben $85 cada uno en mercancía. No requiere pago en dinero a Isabelle.</span>
                   </div>
                 </div>
               ) : client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia' ? (

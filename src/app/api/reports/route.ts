@@ -208,17 +208,17 @@ export async function GET(req: Request) {
         note: sharedNote
       });
     } else if (c.id === 'arinita') {
-      isaShare = 85;
-      agencyNet = 85;
-      sharedIsaDeductionUsd += isaShare;
-      sharedNote = 'Acuerdo $170 compartido con Isabelle ($85 Isa / $85 Agencia)';
+      isaShare = 0; // Sin pago en dinero de la agencia a Isa
+      agencyNet = 85; // $85 en mercancía percibida para la agencia
+      sharedNote = 'Intercambio en mercancía ($170): $85 Isa / $85 Agencia (Sin desembolso de dinero a Isa)';
       sharedAgreementsList.push({
         id: c.id,
         name: c.name,
         total_fee: fee,
-        isa_share: isaShare,
+        isa_share: 0,
+        isa_merchandise: 85,
         agency_net: agencyNet,
-        payment_condition: 'Acuerdo compartido con Isa 50/50',
+        payment_condition: 'Intercambio: $85 en mercancía c/u (Sin pago de dinero)',
         note: sharedNote
       });
     }
@@ -237,7 +237,11 @@ export async function GET(req: Request) {
     });
   }
 
-  const forecastNetAgencyUsd = forecastGrossUsd - sharedIsaDeductionUsd;
+  // Ingreso Neto Agencia: Suma del beneficio neto de cada cliente (incluye $85 en mercancía)
+  let forecastNetAgencyUsd = 0;
+  for (const fc of forecastClientsList) {
+    forecastNetAgencyUsd += Number(fc.agency_net_usd) || 0;
+  }
   const forecastNetAgencyBs = Number((forecastNetAgencyUsd * bcvRate).toFixed(2));
   const forecastGrossBs = Number((forecastGrossUsd * bcvRate).toFixed(2));
   const sharedIsaDeductionBs = Number((sharedIsaDeductionUsd * bcvRate).toFixed(2));
@@ -245,9 +249,10 @@ export async function GET(req: Request) {
   const monthlyForecast = {
     grossTotalUsd: forecastGrossUsd,
     grossTotalBs: forecastGrossBs,
-    sharedIsaDeductionUsd,
+    sharedIsaDeductionUsd, // $200 (Autopartes $100 efectivo + Rony $100 a BCV)
     sharedIsaDeductionBs,
-    netAgencyUsd: forecastNetAgencyUsd,
+    sharedIsaMerchandiseUsd: 85, // $85 en mercancía directa para Isa
+    netAgencyUsd: forecastNetAgencyUsd, // $3.530 ($3.445 dinero + $85 mercancía)
     netAgencyBs: forecastNetAgencyBs,
     bcvRateApplied: bcvRate,
     totalClientsCount: allActiveClients.length,
