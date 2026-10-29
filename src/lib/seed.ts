@@ -220,17 +220,17 @@ export function seedDatabase() {
         id: "english-lab",
         name: "English Lab",
         business_name: "English Lab",
-        rif: "",
+        rif: "J-30707830-8",
         phone: "",
         email: "",
         address: "Caracas, Venezuela",
         default_currency: "USD",
-        base_monthly_fee: 125.0,
+        base_monthly_fee: 100.0,
         meta_ads_budget: 0.0,
         default_rate_type: "BCV",
         billing_day: 10,
         preferred_document: "RECIBO",
-        notes: "Ajuste 2026: $125 (anterior $100). Pagos quincenales (50% el 10 y 50% el 25)."
+        notes: "Tarifa mensual de $100."
       },
       {
         id: "fetal-care",
@@ -585,7 +585,8 @@ export function syncCanonicalClients() {
     'english-lab': { 
       rif: 'J-30707830-8', 
       business_name: 'English Lab',
-      base_monthly_fee: 125.0
+      base_monthly_fee: 100.0,
+      notes: 'Tarifa mensual de $100.'
     },
     'mantica': { 
       name: 'Clinica Leopoldo Aguerrevere (Materno Infantil)',
