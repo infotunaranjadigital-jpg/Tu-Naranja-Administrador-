@@ -73,6 +73,9 @@ export async function PUT(
         billing_day = ?,
         preferred_document = ?,
         notes = ?,
+        is_withholding_agent = ?,
+        iva_retention_percent = ?,
+        islr_retention_percent = ?,
         active = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
@@ -92,6 +95,9 @@ export async function PUT(
       Number(data.billing_day ?? existing.billing_day),
       data.preferred_document ?? existing.preferred_document,
       data.notes ?? existing.notes,
+      data.is_withholding_agent !== undefined ? (data.is_withholding_agent ? 1 : 0) : existing.is_withholding_agent,
+      data.iva_retention_percent !== undefined ? Number(data.iva_retention_percent) : existing.iva_retention_percent,
+      data.islr_retention_percent !== undefined ? Number(data.islr_retention_percent) : existing.islr_retention_percent,
       data.active !== undefined ? Number(data.active) : existing.active,
       id
     );

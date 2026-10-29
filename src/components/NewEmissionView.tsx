@@ -33,6 +33,11 @@ export default function NewEmissionView({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [selectedRif, setSelectedRif] = useState<string>('');
 
+  // Retenciones Fiscales (Agentes de Retención SENIAT)
+  const [applyWithholding, setApplyWithholding] = useState<boolean>(false);
+  const [ivaRetentionPercent, setIvaRetentionPercent] = useState<number>(75);
+  const [islrRetentionPercent, setIslrRetentionPercent] = useState<number>(2);
+
   // Items
   const [items, setItems] = useState<any[]>([
     { description: 'Manejo de Redes Sociales', unit: '1.0', quantity: 1, amount: 150.0 }
@@ -68,6 +73,17 @@ export default function NewEmissionView({
       if (newItems.length > 0) {
         setItems(newItems);
       }
+
+      // Detectar si es agente de retención
+      const isWithholder = client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia';
+      setApplyWithholding(isWithholder);
+      setIvaRetentionPercent(client.iva_retention_percent || 75);
+      setIslrRetentionPercent(client.islr_retention_percent || 2);
+
+      // Detectar método de pago preferido
+      if (client.id === 'calibre' || client.default_rate_type === 'PAYPAL') {
+        setPaymentMethod('PAYPAL');
+      }
     }
   }, [selectedClientId, clients]);
 
@@ -83,7 +99,7 @@ export default function NewEmissionView({
   if (rateType === 'BINANCE') effectiveRate = binanceRate;
   else if (rateType === 'PROMEDIO') effectiveRate = avgRate;
   else if (rateType === 'EURO') effectiveRate = eurRate;
-  else if (rateType === 'EFECTIVO') effectiveRate = bcvRate;
+  else if (rateType === 'EFECTIVO' || rateType === 'PAYPAL') effectiveRate = bcvRate;
   else if (rateType === 'CUSTOM') effectiveRate = parseFloat(customRate) || bcvRate;
 
   // Calculos
@@ -92,6 +108,14 @@ export default function NewEmissionView({
   const ivaRate = docType === 'FORMA_LIBRE' ? 0.16 : 0.0;
   const ivaAmountBs = subtotalBs * ivaRate;
   const totalBs = subtotalBs + ivaAmountBs;
+
+  // Retenciones Fiscales (IVA e ISLR para Agentes de Retención SENIAT)
+  const isWithholdingActive = applyWithholding && docType === 'FORMA_LIBRE';
+  const ivaRetentionAmountBs = isWithholdingActive ? Number(((ivaAmountBs * (ivaRetentionPercent / 100))).toFixed(2)) : 0;
+  const islrRetentionAmountBs = isWithholdingActive ? Number(((subtotalBs * (islrRetentionPercent / 100))).toFixed(2)) : 0;
+  const totalRetentionsBs = ivaRetentionAmountBs + islrRetentionAmountBs;
+  const netPayableBs = totalBs - totalRetentionsBs;
+  const netPayableUsd = effectiveRate > 0 ? (netPayableBs / effectiveRate) : totalAmountCurrency;
 
   // Unidad Base BCV
   const baseBsBcv = currency === 'USD' ? totalAmountCurrency * bcvRate * (1 + ivaRate) : totalBs;
@@ -136,6 +160,9 @@ export default function NewEmissionView({
           custom_rate: rateType === 'CUSTOM' ? effectiveRate : undefined,
           items,
           notes,
+          is_withholding_applied: isWithholdingActive,
+          iva_retention_percent: ivaRetentionPercent,
+          islr_retention_percent: islrRetentionPercent,
           is_paid: isPaid,
           payment_method: isPaid ? paymentMethod : null,
           payment_reference: isPaid ? paymentReference : null
@@ -222,6 +249,17 @@ export default function NewEmissionView({
                     return <div>RIF: {selectedClient.rif || 'Sin RIF'} | Telf: {selectedClient.phone || 'N/A'}</div>;
                   })()}
                   <div className="text-[11px] text-slate-500 truncate">{selectedClient.address || 'Caracas'}</div>
+                  {(selectedClient.is_withholding_agent === 1 || selectedClient.id === 'mantica' || selectedClient.id === 'cc-garcia') && (
+                    <div className="mt-2 p-2 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-200 text-xs flex items-center justify-between font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span>🏛️</span>
+                        <span><strong>Agente de Retención SENIAT:</strong> Este cliente descuenta IVA e ISLR al pagarte.</span>
+                      </div>
+                      <span className="font-mono text-[10px] bg-amber-950 px-2 py-0.5 rounded border border-amber-500/30">
+                        -{selectedClient.iva_retention_percent || 75}% IVA • -{selectedClient.islr_retention_percent || 2}% ISLR
+                      </span>
+                    </div>
+                  )}
                   {selectedClient.id === 'los-rosales' ? (
                     <div className="mt-2 p-2 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-200 text-xs flex items-center gap-1.5 font-medium">
                       <span>🤝</span>

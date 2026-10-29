@@ -61,7 +61,10 @@ export default function ClientsView({
     default_rate_type: 'BCV',
     billing_day: '1',
     preferred_document: 'RECIBO',
-    notes: ''
+    notes: '',
+    is_withholding_agent: false,
+    iva_retention_percent: '75',
+    islr_retention_percent: '2'
   });
 
   const filteredClients = clients
@@ -76,9 +79,10 @@ export default function ClientsView({
       if (rateFilter !== 'ALL' && c.default_rate_type !== rateFilter) return false;
       if (docFilter !== 'ALL' && c.preferred_document !== docFilter) return false;
 
-      if (categoryFilter === 'SHARED' && c.id !== 'los-rosales') return false;
-      if (categoryFilter === 'AGREEMENT' && !(c.id === 'arianita' || (c.notes && c.notes.toLowerCase().includes('convenio')))) return false;
-      if (categoryFilter === 'REGULAR' && (c.id === 'arianita' || (c.notes && c.notes.toLowerCase().includes('convenio')))) return false;
+      if (categoryFilter === 'SHARED' && !(c.id === 'los-rosales' || c.id === 'odontologo-rony' || c.id === 'arinita')) return false;
+      if (categoryFilter === 'AGREEMENT' && !(c.id === 'odontologo-rony' || c.id === 'arinita')) return false;
+      if (categoryFilter === 'REGULAR' && (c.id === 'odontologo-rony' || c.id === 'arinita' || c.id === 'los-rosales')) return false;
+      if (categoryFilter === 'WITHHOLDING' && !(c.is_withholding_agent === 1 || c.id === 'mantica' || c.id === 'cc-garcia')) return false;
 
       return true;
     })
@@ -162,7 +166,10 @@ export default function ClientsView({
         default_rate_type: clientToEdit.default_rate_type || 'BCV',
         billing_day: clientToEdit.billing_day?.toString() || '1',
         preferred_document: clientToEdit.preferred_document || 'RECIBO',
-        notes: clientToEdit.notes || ''
+        notes: clientToEdit.notes || '',
+        is_withholding_agent: Boolean(clientToEdit.is_withholding_agent === 1 || clientToEdit.id === 'mantica' || clientToEdit.id === 'cc-garcia'),
+        iva_retention_percent: clientToEdit.iva_retention_percent?.toString() || '75',
+        islr_retention_percent: clientToEdit.islr_retention_percent?.toString() || '2'
       });
     } else {
       setEditingClient(null);
@@ -178,7 +185,10 @@ export default function ClientsView({
         default_rate_type: 'BCV',
         billing_day: '1',
         preferred_document: 'RECIBO',
-        notes: ''
+        notes: '',
+        is_withholding_agent: false,
+        iva_retention_percent: '75',
+        islr_retention_percent: '2'
       });
     }
     setClientModalOpen(true);
@@ -197,7 +207,10 @@ export default function ClientsView({
           ...formData,
           base_monthly_fee: parseFloat(formData.base_monthly_fee) || 0,
           meta_ads_budget: parseFloat(formData.meta_ads_budget) || 0,
-          billing_day: parseInt(formData.billing_day, 10) || 1
+          billing_day: parseInt(formData.billing_day, 10) || 1,
+          is_withholding_agent: formData.is_withholding_agent ? 1 : 0,
+          iva_retention_percent: parseFloat(formData.iva_retention_percent) || 75,
+          islr_retention_percent: parseFloat(formData.islr_retention_percent) || 2
         })
       });
 
@@ -279,8 +292,9 @@ export default function ClientsView({
             >
               <option value="ALL">Todos los Tipos</option>
               <option value="REGULAR">Recurrentes Fijos</option>
-              <option value="SHARED">🤝 Compartidos (Isa - $100)</option>
-              <option value="AGREEMENT">🔒 Convenios Especiales</option>
+              <option value="WITHHOLDING">🏛️ Agentes de Retención (SENIAT)</option>
+              <option value="SHARED">🤝 Compartidos con Isabelle</option>
+              <option value="AGREEMENT">🤝 Acuerdos Especiales</option>
             </select>
           </div>
 
@@ -362,6 +376,19 @@ export default function ClientsView({
                 </span>
               </div>
 
+              {/* Insignia de Agente de Retención SENIAT */}
+              {(client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia') && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 text-[11px] text-amber-200 mb-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span>🏛️</span>
+                    <span>Agente de Retención SENIAT</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-amber-300 font-semibold bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/20">
+                    -{client.iva_retention_percent || 75}% IVA • -{client.islr_retention_percent || 2}% ISLR
+                  </span>
+                </div>
+              )}
+
               {/* RIF & Address */}
               <div className="text-xs text-slate-400 space-y-1 mb-3">
                 <div className="flex items-center gap-2">
@@ -420,12 +447,36 @@ export default function ClientsView({
                     <span>Cobro $200 en efectivo: $100 corresponden a Isa y $100 a la agencia.</span>
                   </div>
                 </div>
-              ) : (client.id === 'arianita' || (client.notes && client.notes.toLowerCase().includes('convenio'))) ? (
-                <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-2.5 text-[11px] text-purple-200 mb-3 flex items-start gap-2">
-                  <span className="shrink-0 text-base leading-none">🔒</span>
+              ) : client.id === 'odontologo-rony' ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">🤝</span>
                   <div>
-                    <span className="font-bold text-purple-300 block">Convenio / Acuerdo Especial:</span>
-                    <span>Excluido del pronóstico regular mensual (MRR).</span>
+                    <span className="font-bold text-amber-300 block">Acuerdo $250 (Compartido con Isabelle):</span>
+                    <span>Se le pagan $100 a Isabelle a tasa BCV y $150 netos quedan a la agencia.</span>
+                  </div>
+                </div>
+              ) : client.id === 'arinita' ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">🤝</span>
+                  <div>
+                    <span className="font-bold text-amber-300 block">Acuerdo Compartido con Isabelle:</span>
+                    <span>Cobro de $170 compartido con Isabelle ($85 Isa / $85 Agencia).</span>
+                  </div>
+                </div>
+              ) : client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia' ? (
+                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-2.5 text-[11px] text-indigo-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">🏛️</span>
+                  <div>
+                    <span className="font-bold text-indigo-300 block">Agente de Retención SENIAT:</span>
+                    <span>Aplica retención de 75% IVA y 2% ISLR en facturación Forma Libre.</span>
+                  </div>
+                </div>
+              ) : client.id === 'calibre' || client.default_rate_type === 'PAYPAL' ? (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-2.5 text-[11px] text-blue-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">💳</span>
+                  <div>
+                    <span className="font-bold text-blue-300 block">Método de Pago:</span>
+                    <span>Procesado mensualmente a través de PayPal.</span>
                   </div>
                 </div>
               ) : client.notes ? (
@@ -738,6 +789,57 @@ export default function ClientsView({
                       <span>📄 Recibo Digital</span>
                     </label>
                   </div>
+                </div>
+
+                {/* Agente de Retención SENIAT */}
+                <div className="col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_withholding_agent}
+                      onChange={(e) => setFormData({ ...formData, is_withholding_agent: e.target.checked })}
+                      className="w-4 h-4 rounded text-orange-600 focus:ring-0 bg-slate-900 border-slate-700"
+                    />
+                    <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                      🏛️ ¿Es Agente de Retención (Contribuyente Especial SENIAT)?
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-slate-400">
+                    Marca esta opción si el cliente retiene IVA e ISLR al pagar facturas fiscales (como Clínica Leopoldo Aguerrevere o Centro Cerámico García).
+                  </p>
+
+                  {formData.is_withholding_agent && (
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                          % Retención IVA (ej. 75%)
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={formData.iva_retention_percent}
+                          onChange={(e) => setFormData({ ...formData, iva_retention_percent: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                          % Retención ISLR (ej. 2%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="100"
+                          value={formData.islr_retention_percent}
+                          onChange={(e) => setFormData({ ...formData, islr_retention_percent: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

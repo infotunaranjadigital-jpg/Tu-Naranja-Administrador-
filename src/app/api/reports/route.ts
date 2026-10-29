@@ -126,6 +126,8 @@ export async function GET(req: Request) {
       c.business_name,
       c.base_monthly_fee,
       c.default_rate_type,
+      c.is_withholding_agent,
+      c.notes,
       COUNT(d.id) as doc_count,
       SUM(d.total_amount_currency) as total_currency,
       SUM(d.total_bs_applied) as total_bs_applied,
@@ -134,8 +136,9 @@ export async function GET(req: Request) {
       (SELECT MAX(date) FROM client_fee_history WHERE client_id = c.id) as last_fee_adjustment
     FROM clients c
     LEFT JOIN documents d ON c.id = d.client_id AND d.issue_date >= ? AND d.issue_date <= ?
+    WHERE c.active = 1
     GROUP BY c.id
-    ORDER BY total_base_usd_bcv DESC
+    ORDER BY c.base_monthly_fee DESC
   `);
   const clientBreakdown = clientBreakdownStmt.all(startDate, endDate);
 
@@ -152,9 +155,11 @@ export async function GET(req: Request) {
   `);
   const pendingDebts = pendingStmt.all();
 
-  // 6. Pronóstico de Ingreso Mensual Recurrente (MRR)
-  // Excluye clientes por acuerdos o convenios especiales.
-  // En Autopartes Los Rosales ($200 efectivo), $100 corresponden a Isa y $100 a la agencia.
+  // 6. Pronóstico de Ingreso Mensual Recurrente (MRR) y Flujo de Caja
+  // Considera cartera de clientes activos y desglosa deducciones/acuerdos con Isabelle:
+  // - Autopartes Los Rosales: $200 cobrados ($100 Isa / $100 Agencia en efectivo)
+  // - Odontólogo (Dr. Rony): $250 por acuerdo ($100 a Isabelle a tasa BCV / $150 Agencia)
+  // - Arinita: $170 por acuerdo compartido con Isabelle ($85 Isa / $85 Agencia)
   const allActiveClients = db.prepare('SELECT * FROM clients WHERE active = 1 ORDER BY base_monthly_fee DESC, name ASC').all() as any[];
   
   let bcvRate = 888.12;
@@ -162,70 +167,92 @@ export async function GET(req: Request) {
   if (latestRateRow?.bcv_usd) bcvRate = Number(latestRateRow.bcv_usd);
 
   let forecastGrossUsd = 0;
-  let sharedIsaDeduction = 0;
-  let regularClientsCount = 0;
+  let sharedIsaDeductionUsd = 0;
   const forecastClientsList: any[] = [];
-  const agreementClientsList: any[] = [];
+  const sharedAgreementsList: any[] = [];
 
   for (const c of allActiveClients) {
-    const isAgreement = c.id === 'arianita' || 
-      (c.notes && (c.notes.toLowerCase().includes('convenio') || c.notes.toLowerCase().includes('acuerdo')));
-    const isAutopartes = c.id === 'los-rosales';
+    const fee = Number(c.base_monthly_fee) || 0;
+    forecastGrossUsd += fee;
 
-    if (isAgreement) {
-      agreementClientsList.push({
+    let agencyNet = fee;
+    let isaShare = 0;
+    let sharedNote: string | null = null;
+
+    if (c.id === 'los-rosales') {
+      isaShare = 100;
+      agencyNet = 100;
+      sharedIsaDeductionUsd += isaShare;
+      sharedNote = 'Cliente compartido con Isabelle: $100 Isa en efectivo / $100 Agencia';
+      sharedAgreementsList.push({
         id: c.id,
         name: c.name,
-        business_name: c.business_name,
-        base_monthly_fee: c.base_monthly_fee,
-        reason: 'Cliente por acuerdo o convenio especial (excluido de pronóstico fijo recurrente)'
+        total_fee: fee,
+        isa_share: isaShare,
+        agency_net: agencyNet,
+        payment_condition: 'Efectivo USD ($100 Isa / $100 Agencia)',
+        note: sharedNote
       });
-    } else {
-      let clientFee = Number(c.base_monthly_fee) || 0;
-      let netForAgency = clientFee;
-      let sharedForIsa = 0;
-
-      if (isAutopartes) {
-        sharedForIsa = 100; // $100 corresponden a Isa
-        netForAgency = 100; // $100 corresponden a la agencia
-        sharedIsaDeduction += sharedForIsa;
-      }
-
-      forecastGrossUsd += clientFee;
-      regularClientsCount++;
-
-      forecastClientsList.push({
+    } else if (c.id === 'odontologo-rony') {
+      isaShare = 100;
+      agencyNet = 150;
+      sharedIsaDeductionUsd += isaShare;
+      sharedNote = 'Acuerdo $250: $100 pagaderos a Isabelle a tasa oficial BCV / $150 Agencia';
+      sharedAgreementsList.push({
         id: c.id,
         name: c.name,
-        business_name: c.business_name,
-        billing_day: c.billing_day,
-        total_fee_usd: clientFee,
-        agency_net_usd: netForAgency,
-        shared_isa_usd: sharedForIsa,
-        default_rate_type: c.default_rate_type,
-        shared_note: isAutopartes 
-          ? 'Cliente compartido con Isabelle ($100 corresponden a Isa / $100 a la agencia)' 
-          : null
+        total_fee: fee,
+        isa_share: isaShare,
+        agency_net: agencyNet,
+        payment_condition: '$100 a Isa a tasa oficial BCV',
+        note: sharedNote
+      });
+    } else if (c.id === 'arinita') {
+      isaShare = 85;
+      agencyNet = 85;
+      sharedIsaDeductionUsd += isaShare;
+      sharedNote = 'Acuerdo $170 compartido con Isabelle ($85 Isa / $85 Agencia)';
+      sharedAgreementsList.push({
+        id: c.id,
+        name: c.name,
+        total_fee: fee,
+        isa_share: isaShare,
+        agency_net: agencyNet,
+        payment_condition: 'Acuerdo compartido con Isa 50/50',
+        note: sharedNote
       });
     }
+
+    forecastClientsList.push({
+      id: c.id,
+      name: c.name,
+      business_name: c.business_name,
+      billing_day: c.billing_day,
+      total_fee_usd: fee,
+      agency_net_usd: agencyNet,
+      shared_isa_usd: isaShare,
+      default_rate_type: c.default_rate_type,
+      is_withholding_agent: c.is_withholding_agent === 1,
+      shared_note: sharedNote
+    });
   }
 
-  const forecastNetAgencyUsd = forecastGrossUsd - sharedIsaDeduction;
+  const forecastNetAgencyUsd = forecastGrossUsd - sharedIsaDeductionUsd;
   const forecastNetAgencyBs = Number((forecastNetAgencyUsd * bcvRate).toFixed(2));
   const forecastGrossBs = Number((forecastGrossUsd * bcvRate).toFixed(2));
+  const sharedIsaDeductionBs = Number((sharedIsaDeductionUsd * bcvRate).toFixed(2));
 
   const monthlyForecast = {
     grossTotalUsd: forecastGrossUsd,
     grossTotalBs: forecastGrossBs,
-    sharedIsaDeductionUsd: sharedIsaDeduction,
+    sharedIsaDeductionUsd,
+    sharedIsaDeductionBs,
     netAgencyUsd: forecastNetAgencyUsd,
     netAgencyBs: forecastNetAgencyBs,
     bcvRateApplied: bcvRate,
-    regularClientsCount,
-    agreementClientsCount: agreementClientsList.length,
+    totalClientsCount: allActiveClients.length,
     forecastClientsList,
-    agreementClientsList,
-    sharedAutopartesNote: 'Autopartes Los Rosales cobra $200 en efectivo: $100 corresponden a Isabelle y $100 a Tu Naranja Digital.'
+    sharedAgreementsList
   };
 
   return NextResponse.json({

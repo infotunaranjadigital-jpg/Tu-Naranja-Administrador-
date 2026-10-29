@@ -36,7 +36,10 @@ export async function POST(req: Request) {
     const {
       name, business_name, rif, phone, email, address,
       default_currency, base_monthly_fee, meta_ads_budget,
-      default_rate_type, billing_day, preferred_document, notes
+      default_rate_type, billing_day, preferred_document, notes,
+      is_withholding_agent = 0,
+      iva_retention_percent = 75,
+      islr_retention_percent = 2
     } = data;
 
     if (!name) {
@@ -50,15 +53,17 @@ export async function POST(req: Request) {
       INSERT INTO clients (
         id, name, business_name, rif, phone, email, address,
         default_currency, base_monthly_fee, meta_ads_budget,
-        default_rate_type, billing_day, preferred_document, notes, active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        default_rate_type, billing_day, preferred_document, notes,
+        is_withholding_agent, iva_retention_percent, islr_retention_percent,
+        active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `);
 
     stmt.run(
       id, name, business_name || name, rif || '', phone || '', email || '', address || '',
       default_currency || 'USD', Number(base_monthly_fee) || 0, Number(meta_ads_budget) || 0,
       default_rate_type || 'BCV', Number(billing_day) || 1, preferred_document || 'RECIBO',
-      notes || ''
+      notes || '', Number(is_withholding_agent) ? 1 : 0, Number(iva_retention_percent) || 75, Number(islr_retention_percent) || 2
     );
 
     // Initial fee record in history

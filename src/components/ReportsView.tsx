@@ -264,14 +264,14 @@ export default function ReportsView() {
                 Bs. {formatBs(reportData.monthlyForecast.netAgencyBs)}
               </p>
               <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                Monto limpio que ingresa a Tu Naranja Digital
+                Flujo de caja recurrente neto de Tu Naranja Digital
               </div>
             </div>
 
             {/* Total Bruto Recurrente */}
             <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-xl">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Facturación Bruta Clientes
+                Facturación Total Cartera
               </span>
               <div className="text-2xl font-black text-slate-200 font-mono">
                 ${reportData.monthlyForecast.grossTotalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
@@ -281,14 +281,14 @@ export default function ReportsView() {
                 Bs. {formatBs(reportData.monthlyForecast.grossTotalBs)}
               </p>
               <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                {reportData.monthlyForecast.regularClientsCount} clientes recurrentes activos
+                {reportData.monthlyForecast.totalClientsCount || reportData.monthlyForecast.forecastClientsList?.length} clientes activos
               </div>
             </div>
 
-            {/* Deducción Isa / Autopartes */}
+            {/* Deducciones / Pagos Compartidos a Isabelle */}
             <div className="bg-slate-950/70 border border-amber-500/30 p-4 rounded-xl">
               <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-1">
-                <span>Deducción Compartida (Isa)</span>
+                <span>Pagos a Isabelle (Compartidos)</span>
                 <Handshake className="w-3.5 h-3.5 text-amber-400" />
               </div>
               <div className="text-2xl font-black text-amber-300 font-mono">
@@ -296,50 +296,60 @@ export default function ReportsView() {
                 <span className="text-xs font-sans text-amber-400/80">USD</span>
               </div>
               <p className="text-xs text-amber-200/90 font-medium mt-1">
-                Autopartes Los Rosales ($100 Isa)
+                Autopartes ($100), Rony ($100 a BCV), Arinita ($85)
               </p>
               <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                Se descuenta del neto de la agencia
+                Deducido automáticamente del neto de agencia
               </div>
             </div>
 
-            {/* Excluidos por Convenio */}
-            <div className="bg-slate-950/70 border border-purple-500/30 p-4 rounded-xl">
-              <div className="flex items-center justify-between text-[11px] font-bold text-purple-300 uppercase tracking-wider mb-1">
-                <span>Excluidos por Convenio</span>
-                <Info className="w-3.5 h-3.5 text-purple-400" />
+            {/* Tasa Oficial BCV */}
+            <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-xl">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                <span>Tasa Oficial BCV Aplicada</span>
+                <DollarSign className="w-3.5 h-3.5 text-orange-400" />
               </div>
-              <div className="text-2xl font-black text-purple-300 font-mono">
-                {reportData.monthlyForecast.agreementClientsCount}{' '}
-                <span className="text-xs font-sans text-purple-300/80">Cliente(s)</span>
+              <div className="text-2xl font-black text-orange-400 font-mono">
+                {formatBs(reportData.monthlyForecast.bcvRateApplied)}{' '}
+                <span className="text-xs font-sans text-slate-400">Bs./$</span>
               </div>
-              <p className="text-xs text-purple-200/90 font-medium mt-1">
-                Odontólogo / Arinita ($170)
+              <p className="text-xs text-slate-300 font-medium mt-1">
+                Conversión en tiempo real
               </p>
               <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
-                No computable en pronóstico regular
+                Sincronizada con Banco Central de Venezuela
               </div>
             </div>
           </div>
 
           {/* Observaciones Específicas / Reglas Clave */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
               <span className="text-base leading-none">🤝</span>
               <div className="text-xs">
-                <span className="font-bold text-amber-300 block mb-0.5">Autopartes Los Rosales (Cliente Compartido)</span>
+                <span className="font-bold text-amber-300 block mb-0.5">Autopartes Los Rosales ($200)</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  A pesar de cobrar <strong>$200 en efectivo</strong>, <strong>$100 corresponden a Isabelle</strong> y <strong>$100 a la agencia</strong>. El sistema resta automáticamente los $100 de Isa para calcular el neto real de Tu Naranja Digital.
+                  Cobro de <strong>$200 en efectivo</strong>: <strong>$100 corresponden a Isabelle</strong> y <strong>$100 a la agencia</strong>.
                 </p>
               </div>
             </div>
 
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-3 flex items-start gap-2.5">
-              <span className="text-base leading-none">🔒</span>
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
+              <span className="text-base leading-none">🤝</span>
               <div className="text-xs">
-                <span className="font-bold text-purple-300 block mb-0.5">Exclusión de Acuerdos / Convenios</span>
+                <span className="font-bold text-amber-300 block mb-0.5">Odontólogo - Dr. Rony ($250)</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Los clientes bajo modalidad de intercambio o acuerdo especial (como <strong>Odontólogo / Arinita - $170</strong>) quedan automáticamente excluidos de la facturación pronosticada para no inflar el flujo de caja esperado.
+                  Acuerdo de <strong>$250</strong>. De este cliente se pagan <strong>$100 a Isabelle a tasa oficial BCV</strong> (quedan <strong>$150</strong> netos a la agencia).
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
+              <span className="text-base leading-none">🤝</span>
+              <div className="text-xs">
+                <span className="font-bold text-amber-300 block mb-0.5">Arinita ($170 Compartido)</span>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Acuerdo de <strong>$170</strong> compartido con Isabelle (<strong>$85</strong> Isa / <strong>$85</strong> Agencia).
                 </p>
               </div>
             </div>
@@ -722,9 +732,24 @@ export default function ReportsView() {
                           🤝 $100 Isa / $100 Agencia
                         </span>
                       )}
-                      {(c.id === 'arianita' || (c.notes && c.notes.toLowerCase().includes('convenio'))) && (
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-medium">
-                          🔒 Acuerdo Especial (Excluido MRR)
+                      {c.id === 'odontologo-rony' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
+                          🤝 Acuerdo $250 ($100 Isa BCV / $150 Agencia)
+                        </span>
+                      )}
+                      {c.id === 'arinita' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
+                          🤝 $170 Compartido con Isa
+                        </span>
+                      )}
+                      {(c.is_withholding_agent === 1 || c.id === 'mantica' || c.id === 'cc-garcia') && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">
+                          🏛️ Retención SENIAT (75% IVA / 2% ISLR)
+                        </span>
+                      )}
+                      {(c.default_rate_type === 'PAYPAL' || c.id === 'calibre') && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded font-medium">
+                          💳 PayPal
                         </span>
                       )}
                     </div>

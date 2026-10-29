@@ -62,6 +62,9 @@ function initSchema(db: DatabaseSync) {
       default_rate_type TEXT DEFAULT 'BCV', -- 'BCV', 'BINANCE', 'PROMEDIO', 'EURO', 'EFECTIVO'
       billing_day INTEGER DEFAULT 1,
       preferred_document TEXT DEFAULT 'RECIBO', -- 'FORMA_LIBRE', 'RECIBO'
+      is_withholding_agent INTEGER DEFAULT 0, -- 1 si es agente de retencion SENIAT
+      iva_retention_percent REAL DEFAULT 75,
+      islr_retention_percent REAL DEFAULT 2,
       notes TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -98,6 +101,13 @@ function initSchema(db: DatabaseSync) {
       iva_rate REAL DEFAULT 0, -- 0.16 para forma libre, 0 para recibo por defecto
       iva_amount_bs REAL DEFAULT 0,
       total_bs_applied REAL NOT NULL,
+      is_withholding_applied INTEGER DEFAULT 0,
+      iva_retention_percent REAL DEFAULT 0,
+      iva_retention_amount_bs REAL DEFAULT 0,
+      islr_retention_percent REAL DEFAULT 0,
+      islr_retention_amount_bs REAL DEFAULT 0,
+      net_payable_bs REAL DEFAULT 0,
+      net_payable_usd REAL DEFAULT 0,
       base_bs_bcv REAL NOT NULL, -- Equivalente total en Bs a tasa BCV del día
       base_usd_bcv REAL NOT NULL, -- Equivalente en USD oficial BCV
       items_json TEXT NOT NULL, -- JSON array de items
@@ -156,5 +166,35 @@ function initSchema(db: DatabaseSync) {
   } catch {}
   try {
     db.exec(`ALTER TABLE documents ADD COLUMN client_rif TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN is_withholding_agent INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN iva_retention_percent REAL DEFAULT 75`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN islr_retention_percent REAL DEFAULT 2`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN is_withholding_applied INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN iva_retention_percent REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN iva_retention_amount_bs REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN islr_retention_percent REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN islr_retention_amount_bs REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN net_payable_bs REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN net_payable_usd REAL DEFAULT 0`);
   } catch {}
 }

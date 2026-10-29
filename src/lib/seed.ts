@@ -92,17 +92,17 @@ export function seedDatabase() {
         id: "cc-garcia",
         name: "CC Garcia",
         business_name: "Centro Ceramico Garcia I, C.A.",
-        rif: "J-31275024-3",
+        rif: "J-31275024-3, J-31273093-5",
         phone: "0212-4812972",
         email: "centroceramicogarcia@gmail.com",
         address: "Av. San Martin, Albañales a Cruz de la Vega #284",
         default_currency: "USD",
-        base_monthly_fee: 150.0,
+        base_monthly_fee: 170.0,
         meta_ads_budget: 0.0,
         default_rate_type: "PROMEDIO",
         billing_day: 2,
         preferred_document: "FORMA_LIBRE",
-        notes: "Tarifa subió a $150 en 2026. +$30 jornada de grabacion."
+        notes: "Tarifa $170 ($140 manejo mensual + $30 grabaciones). Agente de Retención SENIAT (75% IVA y 2% ISLR)."
       },
       {
         id: "sovemo",
@@ -113,12 +113,12 @@ export function seedDatabase() {
         email: "sovemo.venezuela@gmail.com",
         address: "AV 6TA. TRANSV. DE SAN JUAN BOSCO EDIF CLINICA EL AVILA",
         default_currency: "USD",
-        base_monthly_fee: 180.0,
+        base_monthly_fee: 150.0,
         meta_ads_budget: 0.0,
         default_rate_type: "BCV",
         billing_day: 24,
         preferred_document: "RECIBO",
-        notes: "Tarifa 2026: $180 (anterior $150). Manejo mensual y coberturas de eventos."
+        notes: "Tarifa 2026: $150 a tasa oficial BCV."
       },
       {
         id: "soc-mastologia",
@@ -307,10 +307,58 @@ export function seedDatabase() {
         default_currency: "USD",
         base_monthly_fee: 180.0,
         meta_ads_budget: 0.0,
-        default_rate_type: "BINANCE",
+        default_rate_type: "PAYPAL",
         billing_day: 20,
         preferred_document: "RECIBO",
-        notes: "Pago internacional / PayPal / Binance."
+        notes: "Pago acordado mensual a través de PayPal."
+      },
+      {
+        id: "dra-dama",
+        name: "Dra DAMA",
+        business_name: "Dra. Dama",
+        rif: "V-13721648-1",
+        phone: "",
+        email: "",
+        address: "Caracas, Venezuela",
+        default_currency: "USD",
+        base_monthly_fee: 250.0,
+        meta_ads_budget: 0.0,
+        default_rate_type: "BCV",
+        billing_day: 1,
+        preferred_document: "RECIBO",
+        notes: "Cliente médico. Tarifa actualizada a $250/mes."
+      },
+      {
+        id: "arinita",
+        name: "Arinita",
+        business_name: "Arinita",
+        rif: "J-50811817-0",
+        phone: "",
+        email: "",
+        address: "Caracas, Venezuela",
+        default_currency: "USD",
+        base_monthly_fee: 170.0,
+        meta_ads_budget: 0.0,
+        default_rate_type: "BCV",
+        billing_day: 1,
+        preferred_document: "RECIBO",
+        notes: "Cliente por acuerdo compartido con Isabelle ($170 total)."
+      },
+      {
+        id: "odontologo-rony",
+        name: "Odontólogo (Dr. Rony)",
+        business_name: "Odontólogo (Dr. Rony)",
+        rif: "V-15200632-9",
+        phone: "",
+        email: "",
+        address: "Caracas, Venezuela",
+        default_currency: "USD",
+        base_monthly_fee: 250.0,
+        meta_ads_budget: 0.0,
+        default_rate_type: "BCV",
+        billing_day: 1,
+        preferred_document: "RECIBO",
+        notes: "Acuerdo por $250. De este cliente se le pagan $100 a Isabelle a tasa oficial BCV (Neto Agencia: $150)."
       }
     ];
 
@@ -511,68 +559,218 @@ export function syncCanonicalTeam() {
 export function syncCanonicalClients() {
   const db = getDb();
   
-  // Mapeo oficial de RIFs extraídos del Listado Oficial del cliente
-  const updates: Record<string, { rif: string; business_name?: string; notes?: string }> = {
-    'sovemo': { rif: 'J-30327967-8', business_name: 'SOC. VEN. DE MENOPAUSIA Y OSTEOPOROSIS - SOVEMO' },
-    'english-lab': { rif: 'J-30707830-8', business_name: 'English Lab' },
-    'mantica': { rif: 'J-00059876-2', business_name: 'Materno Infantil C.A (MANTICA)' },
-    'cc-garcia': { rif: 'J-31275024-3, J-31273093-5', business_name: 'Centro Ceramico Garcia I, C.A.' },
-    'soc-oncologia': { rif: 'J-00257350-3', business_name: 'Sociedad Venezolana de Oncologia (SVO)' },
-    'soc-mastologia': { rif: 'J-00331364-5', business_name: 'Sociedad Venezolana de Mastologia (SVM)' },
-    'fototecno': { rif: 'J-50765898-2', business_name: 'FotoTecno' },
-    'dra-virginia': { rif: 'V-06820047-0', business_name: 'Dra. Virginia' },
-    'arias-doc': { rif: 'V-11312990-1, V-06625245-7, V-03120276-7', business_name: 'Arias DOC' },
-    'dra-fanny-toro': { rif: 'V-13872720-0', business_name: 'Dra. Fanny Toro' },
-    'dr-gerardo': { rif: 'V-9486579-0', business_name: 'Dr. Gerardo' },
+  // Mapeo oficial y sincronización de clientes con tarifas actualizadas y reglas SENIAT
+  const clientConfigs: Record<string, { 
+    name?: string;
+    business_name?: string;
+    rif: string; 
+    base_monthly_fee?: number;
+    default_rate_type?: string;
+    preferred_document?: string;
+    notes?: string;
+    is_withholding_agent?: number;
+    iva_retention_percent?: number;
+    islr_retention_percent?: number;
+  }> = {
+    'sovemo': { 
+      name: 'SOVEMO',
+      business_name: 'SOC. VEN. DE MENOPAUSIA Y OSTEOPOROSIS - SOVEMO',
+      rif: 'J-30327967-8', 
+      base_monthly_fee: 150.0,
+      default_rate_type: 'BCV',
+      notes: 'Tarifa mensual de $150 a tasa oficial BCV.' 
+    },
+    'english-lab': { 
+      rif: 'J-30707830-8', 
+      business_name: 'English Lab',
+      base_monthly_fee: 125.0
+    },
+    'mantica': { 
+      name: 'Clinica Leopoldo Aguerrevere (Materno Infantil)',
+      rif: 'J-00059876-2', 
+      business_name: 'Materno Infantil C.A (MANTICA)',
+      base_monthly_fee: 350.0,
+      notes: 'Agente de Retención (SENIAT). Facturación en Forma Libre con retención de 75% IVA y 2% ISLR.',
+      is_withholding_agent: 1,
+      iva_retention_percent: 75,
+      islr_retention_percent: 2
+    },
+    'cc-garcia': { 
+      name: 'CC Garcia',
+      rif: 'J-31275024-3, J-31273093-5', 
+      business_name: 'Centro Ceramico Garcia I, C.A.',
+      base_monthly_fee: 170.0, // $140 mensual + $30 grabaciones
+      notes: 'Tarifa $170 ($140 manejo mensual + $30 de grabaciones). Agente de Retención SENIAT (75% IVA y 2% ISLR en Forma Libre).',
+      is_withholding_agent: 1,
+      iva_retention_percent: 75,
+      islr_retention_percent: 2
+    },
+    'calibre': {
+      name: 'Calibre',
+      rif: '',
+      base_monthly_fee: 180.0,
+      default_rate_type: 'PAYPAL',
+      preferred_document: 'RECIBO',
+      notes: 'Pago mensual de $180 procesado a través de PayPal.'
+    },
+    'dra-dama': {
+      name: 'Dra DAMA',
+      business_name: 'Dra. Dama',
+      rif: 'V-13721648-1',
+      base_monthly_fee: 250.0,
+      default_rate_type: 'BCV',
+      notes: 'Cliente médico. Tarifa actualizada a $250/mes.'
+    },
+    'soc-oncologia': { 
+      rif: 'J-00257350-3', 
+      business_name: 'Sociedad Venezolana de Oncologia (SVO)',
+      base_monthly_fee: 240.0
+    },
+    'soc-mastologia': { 
+      rif: 'J-00331364-5', 
+      business_name: 'Sociedad Venezolana de Mastologia (SVM)',
+      base_monthly_fee: 240.0
+    },
+    'fototecno': { 
+      rif: 'J-50765898-2', 
+      business_name: 'FotoTecno',
+      base_monthly_fee: 200.0
+    },
+    'dra-virginia': { 
+      rif: 'V-06820047-0', 
+      business_name: 'Dra. Virginia',
+      base_monthly_fee: 180.0
+    },
+    'arias-doc': { 
+      rif: 'V-11312990-1, V-06625245-7, V-03120276-7', 
+      business_name: 'Arias DOC',
+      base_monthly_fee: 200.0
+    },
+    'dra-fanny-toro': { 
+      rif: 'V-13872720-0', 
+      business_name: 'Dra. Fanny Toro',
+      base_monthly_fee: 100.0
+    },
+    'dr-gerardo': { 
+      rif: 'V-9486579-0', 
+      business_name: 'Dr. Gerardo',
+      base_monthly_fee: 250.0
+    },
     'los-rosales': { 
       rif: 'J-50706696-7', 
       business_name: 'Autorepuestos Los Rosales C.A.',
+      base_monthly_fee: 200.0,
       notes: 'Cliente compartido con Isabelle. Cobro $200 en efectivo: $100 corresponden a Isa y $100 a la agencia.'
     },
-    'fetal-care': { rif: '', business_name: 'Fetal Care C.A. (Sin RIF)' },
-    'feminaid': { rif: 'J-50125683-7', business_name: 'Servicios Feminaid 2021 CA' }
+    'fetal-care': { rif: '', business_name: 'Fetal Care C.A. (Sin RIF)', base_monthly_fee: 160.0 },
+    'feminaid': { rif: 'J-50125683-7', business_name: 'Servicios Feminaid 2021 CA', base_monthly_fee: 320.0 }
   };
 
-  const updateStmt = db.prepare('UPDATE clients SET rif = ?, business_name = COALESCE(?, business_name), notes = COALESCE(?, notes) WHERE id = ?');
-  for (const [id, data] of Object.entries(updates)) {
-    updateStmt.run(data.rif, data.business_name || null, (data as any).notes || null, id);
+  const updateStmt = db.prepare(`
+    UPDATE clients 
+    SET rif = ?, 
+        name = COALESCE(?, name),
+        business_name = COALESCE(?, business_name), 
+        notes = COALESCE(?, notes),
+        base_monthly_fee = COALESCE(?, base_monthly_fee),
+        default_rate_type = COALESCE(?, default_rate_type),
+        is_withholding_agent = COALESCE(?, is_withholding_agent),
+        iva_retention_percent = COALESCE(?, iva_retention_percent),
+        islr_retention_percent = COALESCE(?, islr_retention_percent)
+    WHERE id = ?
+  `);
+
+  const insertClientStmt = db.prepare(`
+    INSERT INTO clients (
+      id, name, business_name, rif, phone, email, address,
+      default_currency, base_monthly_fee, meta_ads_budget,
+      default_rate_type, billing_day, preferred_document, notes,
+      is_withholding_agent, iva_retention_percent, islr_retention_percent
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const [id, data] of Object.entries(clientConfigs)) {
+    const existing = db.prepare('SELECT id FROM clients WHERE id = ?').get(id);
+    if (existing) {
+      updateStmt.run(
+        data.rif, 
+        data.name || null,
+        data.business_name || null, 
+        data.notes || null, 
+        data.base_monthly_fee !== undefined ? data.base_monthly_fee : null,
+        data.default_rate_type || null,
+        data.is_withholding_agent !== undefined ? data.is_withholding_agent : null,
+        data.iva_retention_percent !== undefined ? data.iva_retention_percent : null,
+        data.islr_retention_percent !== undefined ? data.islr_retention_percent : null,
+        id
+      );
+    } else {
+      insertClientStmt.run(
+        id, data.name || id, data.business_name || data.name || id, data.rif,
+        '', '', 'Caracas, Venezuela', 'USD', data.base_monthly_fee || 0, 0,
+        data.default_rate_type || 'BCV', 1, data.preferred_document || 'RECIBO',
+        data.notes || '', data.is_withholding_agent || 0,
+        data.iva_retention_percent || 0, data.islr_retention_percent || 0
+      );
+    }
   }
 
-  // Odontólogo / Arinita (Convenio especial con ambos RIFs)
-  const arianita = db.prepare('SELECT id FROM clients WHERE id = ?').get('arianita');
-  if (arianita) {
-    updateStmt.run('V-15200632-9, J-50811817-0', 'Odontólogo / Arinita', 'Convenio / acuerdo especial (excluido de pronóstico mensual recurrente).', 'arianita');
-  } else {
+  // 1. Separar definitivamente los 2 acuerdos (NO LIGARLOS):
+  // Eliminar el antiguo registro fusionado 'arianita' o 'Odontólogo / Arinita'
+  db.exec(`DELETE FROM clients WHERE id = 'arianita' OR name LIKE '%Odontólogo / Arinita%'`);
+
+  // A. Cliente: Arinita (Fee $170, RIF J-50811817-0, compartido con Isabelle)
+  const arinitaExists = db.prepare('SELECT id FROM clients WHERE id = ?').get('arinita');
+  if (arinitaExists) {
     db.prepare(`
-      INSERT INTO clients (
-        id, name, business_name, rif, phone, email, address,
-        default_currency, base_monthly_fee, meta_ads_budget,
-        default_rate_type, billing_day, preferred_document, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      'arianita', 'Odontólogo / Arinita', 'Odontólogo / Arinita', 'V-15200632-9, J-50811817-0',
-      '', '', 'Caracas, Venezuela',
-      'USD', 170.0, 0, 'BCV', 1, 'RECIBO', 'Convenio / acuerdo especial (excluido de pronóstico mensual recurrente).'
+      UPDATE clients SET 
+        name = 'Arinita',
+        business_name = 'Arinita',
+        rif = 'J-50811817-0',
+        base_monthly_fee = 170.0,
+        default_rate_type = 'BCV',
+        notes = 'Cliente por acuerdo compartido con Isabelle ($170 total).'
+      WHERE id = 'arinita'
+    `).run();
+  } else {
+    insertClientStmt.run(
+      'arinita', 'Arinita', 'Arinita', 'J-50811817-0',
+      '', '', 'Caracas, Venezuela', 'USD', 170.0, 0, 'BCV', 1, 'RECIBO',
+      'Cliente por acuerdo compartido con Isabelle ($170 total).',
+      0, 0, 0
     );
   }
 
-  // Dra DAMA
-  const draDama = db.prepare('SELECT id FROM clients WHERE id = ?').get('dra-dama');
-  if (draDama) {
-    updateStmt.run('V-13721648-1', 'Dra. Dama', 'dra-dama');
-  } else {
+  // B. Cliente: Odontólogo (Dr. Rony) (Fee $250, RIF V-15200632-9, acuerdo $250, $100 a Isabelle a BCV)
+  const ronyExists = db.prepare('SELECT id FROM clients WHERE id = ?').get('odontologo-rony');
+  if (ronyExists) {
     db.prepare(`
-      INSERT INTO clients (
-        id, name, business_name, rif, phone, email, address,
-        default_currency, base_monthly_fee, meta_ads_budget,
-        default_rate_type, billing_day, preferred_document, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      'dra-dama', 'Dra DAMA', 'Dra. Dama', 'V-13721648-1',
-      '', '', 'Caracas, Venezuela',
-      'USD', 150.0, 0, 'BCV', 1, 'RECIBO', 'Cliente médico.'
+      UPDATE clients SET 
+        name = 'Odontólogo (Dr. Rony)',
+        business_name = 'Odontólogo (Dr. Rony)',
+        rif = 'V-15200632-9',
+        base_monthly_fee = 250.0,
+        default_rate_type = 'BCV',
+        notes = 'Acuerdo por $250. De este cliente se le pagan $100 a Isabelle a tasa oficial BCV (Neto Agencia: $150).'
+      WHERE id = 'odontologo-rony'
+    `).run();
+  } else {
+    insertClientStmt.run(
+      'odontologo-rony', 'Odontólogo (Dr. Rony)', 'Odontólogo (Dr. Rony)', 'V-15200632-9',
+      '', '', 'Caracas, Venezuela', 'USD', 250.0, 0, 'BCV', 1, 'RECIBO',
+      'Acuerdo por $250. De este cliente se le pagan $100 a Isabelle a tasa oficial BCV (Neto Agencia: $150).',
+      0, 0, 0
     );
   }
 
-  console.log('Canonical clients RIFs synchronized successfully.');
+  // 2. "Asume partimos de este mes y todo el que tenía vencido su mensualidad ya pagó":
+  // Marcar como PAID todos los documentos pendientes para arrancar solventes
+  db.exec(`
+    UPDATE documents 
+    SET payment_status = 'PAID', 
+        paid_at = COALESCE(paid_at, issue_date) 
+    WHERE payment_status = 'PENDING'
+  `);
+
+  console.log('Canonical clients, fees, separate agreements and debts synchronized successfully.');
 }

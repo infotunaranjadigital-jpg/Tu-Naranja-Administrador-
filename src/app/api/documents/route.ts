@@ -138,6 +138,28 @@ export async function POST(req: Request) {
       : totalBsApplied;
     const baseUsdBcv = Number((baseBsBcv / bcvRate).toFixed(2));
 
+    // 4.1 Retenciones Fiscales (Agentes de Retención SENIAT)
+    const clientIsWithholder = client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia';
+    const applyWithholding = data.is_withholding_applied !== undefined ? Boolean(data.is_withholding_applied) : (doc_type === 'FORMA_LIBRE' && clientIsWithholder);
+
+    let ivaRetentionPercent = 0;
+    let ivaRetentionAmountBs = 0;
+    let islrRetentionPercent = 0;
+    let islrRetentionAmountBs = 0;
+    let netPayableBs = totalBsApplied;
+    let netPayableUsd = totalCurrency;
+
+    if (applyWithholding && doc_type === 'FORMA_LIBRE') {
+      ivaRetentionPercent = Number(data.iva_retention_percent ?? client.iva_retention_percent ?? 75);
+      islrRetentionPercent = Number(data.islr_retention_percent ?? client.islr_retention_percent ?? 2);
+
+      ivaRetentionAmountBs = Number(((ivaAmountBs * ivaRetentionPercent) / 100).toFixed(2));
+      islrRetentionAmountBs = Number(((subtotalBs * islrRetentionPercent) / 100).toFixed(2));
+
+      netPayableBs = Number((totalBsApplied - ivaRetentionAmountBs - islrRetentionAmountBs).toFixed(2));
+      netPayableUsd = appliedRate > 0 ? Number((netPayableBs / appliedRate).toFixed(2)) : totalCurrency;
+    }
+
     // 5. Calculate sequential document number
     const settingKey = doc_type === 'FORMA_LIBRE' ? 'last_forma_libre_number' : 'last_receipt_number';
     const settingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(settingKey) as any;
@@ -154,9 +176,11 @@ export async function POST(req: Request) {
         status, payment_status, currency, total_amount_currency,
         rate_type_applied, applied_rate, bcv_rate_at_issue,
         subtotal_bs, iva_rate, iva_amount_bs, total_bs_applied,
+        is_withholding_applied, iva_retention_percent, iva_retention_amount_bs,
+        islr_retention_percent, islr_retention_amount_bs, net_payable_bs, net_payable_usd,
         base_bs_bcv, base_usd_bcv, items_json, notes,
         payment_method, payment_reference, paid_at, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insertDoc.run(
@@ -164,6 +188,8 @@ export async function POST(req: Request) {
       'EMITTED', is_paid ? 'PAID' : 'PENDING', currency, totalCurrency,
       rate_type_applied, appliedRate, bcvRate,
       subtotalBs, ivaRate, ivaAmountBs, totalBsApplied,
+      applyWithholding ? 1 : 0, ivaRetentionPercent, ivaRetentionAmountBs,
+      islrRetentionPercent, islrRetentionAmountBs, netPayableBs, netPayableUsd,
       baseBsBcv, baseUsdBcv, JSON.stringify(items), notes || '',
       payment_method || null, payment_reference || null,
       is_paid ? new Date().toISOString() : null,
