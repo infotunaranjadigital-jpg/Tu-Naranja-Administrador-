@@ -76,8 +76,8 @@ export default function TeamView() {
     const bcvEur = rates?.bcv_eur || 942.30;
     const binanceUsdt = rates?.binance_usdt || 920.00;
 
-    if (member.id === 'tm_ysael') {
-      // Ysael: default a Euro si todo bien, o BCV
+    if (member.id === 'tm_isabelle' || member.id === 'tm_ysael') {
+      // Isabelle: default a Euro si todo bien, o BCV
       setRateTypeApplied('EURO');
       setRateApplied(bcvEur);
       setAmountBs(quincenaAmount * bcvEur);
@@ -243,7 +243,7 @@ export default function TeamView() {
       {/* Team Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {members.map((member) => {
-          const isYsael = member.id === 'tm_ysael' || member.name.toLowerCase().includes('ysael');
+          const isIsabelle = member.id === 'tm_isabelle' || member.name.toLowerCase().includes('isabelle') || member.name.toLowerCase().includes('ysael');
           const isAngie = member.id === 'tm_angie' || member.name.toLowerCase().includes('angie');
           const isEleonora = member.id === 'tm_eleonora' || member.name.toLowerCase().includes('eleonora');
 
@@ -251,7 +251,7 @@ export default function TeamView() {
             <div 
               key={member.id} 
               className={`bg-slate-900 border rounded-2xl p-5 shadow-lg flex flex-col justify-between transition relative overflow-hidden ${
-                isYsael 
+                isIsabelle 
                   ? 'border-indigo-500/40 hover:border-indigo-400/60' 
                   : isEleonora 
                   ? 'border-amber-500/40 hover:border-amber-400/60' 
@@ -288,7 +288,7 @@ export default function TeamView() {
 
                 {/* Insignia de Regla / Incentivo */}
                 <div className="mb-3">
-                  {isYsael ? (
+                  {isIsabelle ? (
                     <div className="bg-indigo-950/60 border border-indigo-800/60 rounded-lg px-2.5 py-1.5 text-[11px] text-indigo-300 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                       <span><strong>Incentivo Euro (€):</strong> si cumple objetivos; sino tasa BCV regular.</span>
@@ -480,7 +480,7 @@ export default function TeamView() {
                     >
                       <span className="block font-bold text-[11px] flex items-center gap-1">
                         💶 Tasa Euro BCV
-                        {selectedMember.id === 'tm_ysael' && <span className="text-[9px] text-amber-400 font-semibold">(Incentivo)</span>}
+                        {(selectedMember.id === 'tm_isabelle' || selectedMember.id === 'tm_ysael') && <span className="text-[9px] text-amber-400 font-semibold">(Incentivo)</span>}
                       </span>
                       <span className="font-mono text-xs">{rates?.bcv_eur?.toFixed(2) || '942.30'} Bs</span>
                     </button>

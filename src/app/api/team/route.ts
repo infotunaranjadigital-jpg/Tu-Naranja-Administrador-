@@ -16,7 +16,7 @@ export async function GET() {
     FROM team_members m
     ORDER BY 
       CASE m.id 
-        WHEN 'tm_ysael' THEN 1
+        WHEN 'tm_isabelle' THEN 1
         WHEN 'tm_angie' THEN 2
         WHEN 'tm_adis' THEN 3
         WHEN 'tm_mariana' THEN 4

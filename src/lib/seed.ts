@@ -391,10 +391,10 @@ export function syncCanonicalTeam() {
   const db = getDb();
 
   try {
-    // Si habían registros de Isabelle o duplicados generados automáticamente, reasignamos pagos si hubiese
+    // Reasignar pagos si hubiese de IDs previos
     db.exec(`
-      UPDATE team_payments SET member_id = 'tm_ysael' 
-      WHERE member_id IN ('tm_isabelle', 'tm_1793216982099')
+      UPDATE team_payments SET member_id = 'tm_isabelle' 
+      WHERE member_id IN ('tm_ysael', 'tm_1793216982099')
     `);
     db.exec(`
       UPDATE team_payments SET member_id = 'tm_adis' 
@@ -416,7 +416,7 @@ export function syncCanonicalTeam() {
     // Eliminar IDs no canónicos o duplicados
     db.exec(`
       DELETE FROM team_members 
-      WHERE id NOT IN ('tm_ysael', 'tm_angie', 'tm_adis', 'tm_mariana', 'tm_eleonora');
+      WHERE id NOT IN ('tm_isabelle', 'tm_angie', 'tm_adis', 'tm_mariana', 'tm_eleonora');
     `);
   } catch (e) {
     console.warn('Error during team cleanup:', e);
@@ -424,9 +424,9 @@ export function syncCanonicalTeam() {
 
   const canonicalTeam = [
     {
-      id: 'tm_ysael',
-      name: 'Ysael',
-      role: 'Diseño & Contenido',
+      id: 'tm_isabelle',
+      name: 'Isabelle',
+      role: 'Community Manager & Redacción',
       monthly_salary: 240,
       payment_method: 'PAGO_MOVIL',
       payment_frequency: 'QUINCENAL',
@@ -437,7 +437,7 @@ export function syncCanonicalTeam() {
     {
       id: 'tm_angie',
       name: 'Angie',
-      role: 'Community Manager & Redacción',
+      role: 'Diseño & Contenido',
       monthly_salary: 240,
       payment_method: 'PAGO_MOVIL',
       payment_frequency: 'QUINCENAL',
@@ -503,5 +503,5 @@ export function syncCanonicalTeam() {
       m.rate_rule, m.incentive_rule, m.notes
     );
   }
-  console.log('Canonical team synchronized: Ysael, Angie, Adis, Mariana, Eleonora.');
+  console.log('Canonical team synchronized: Isabelle, Angie, Adis, Mariana, Eleonora.');
 }
