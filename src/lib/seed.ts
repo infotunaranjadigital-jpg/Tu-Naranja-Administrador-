@@ -37,9 +37,9 @@ export function seedDatabase() {
       INSERT OR REPLACE INTO exchange_rates (id, date, bcv_usd, bcv_eur, binance_usdt, average_usd)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const bcvUsd = 866.56;
-    const bcvEur = 942.30;
-    const binanceUsdt = 920.00;
+    const bcvUsd = 888.12;
+    const bcvEur = 989.72;
+    const binanceUsdt = 1007.00;
     const avgUsd = Number(((bcvUsd + binanceUsdt) / 2).toFixed(2));
     insertRate.run('rate_' + today, today, bcvUsd, bcvEur, binanceUsdt, avgUsd);
 
