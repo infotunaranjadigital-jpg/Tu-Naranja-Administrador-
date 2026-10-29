@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Download, Calendar, DollarSign, 
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  ShieldCheck, History, Award, AlertCircle, RefreshCw
+  ShieldCheck, History, Award, AlertCircle, RefreshCw,
+  Sparkles, CheckCircle2, ChevronDown, ChevronUp, Info, Handshake
 } from 'lucide-react';
 
 export default function ReportsView() {
@@ -23,6 +24,7 @@ export default function ReportsView() {
 
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showForecastList, setShowForecastList] = useState(false);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -180,6 +182,167 @@ export default function ReportsView() {
           </div>
         </div>
       </div>
+
+      {/* 🔮 Pronóstico de Ingreso Mensual Recurrente (MRR) */}
+      {reportData?.monthlyForecast && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-indigo-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  Pronóstico Fijo Recurrente (MRR)
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Tasa BCV Aplicada: Bs. {formatBs(reportData.monthlyForecast.bcvRateApplied)}
+                </span>
+              </div>
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                Pronóstico de Ingreso Mensual
+              </h3>
+              <p className="text-xs text-slate-400">
+                Suma estimada recurrente mensual de clientes activos. Excluye convenios/acuerdos y deduce montos compartidos.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowForecastList(!showForecastList)}
+              className="self-start lg:self-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              {showForecastList ? <ChevronUp className="w-4 h-4 text-orange-400" /> : <ChevronDown className="w-4 h-4 text-orange-400" />}
+              {showForecastList ? 'Ocultar Desglose de Clientes' : 'Ver Desglose de Clientes'}
+            </button>
+          </div>
+
+          {/* Forecast Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {/* Neto Agencia */}
+            <div className="bg-slate-950/90 border border-emerald-500/40 p-4 rounded-xl shadow-lg">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                ★ Ingreso Neto Agencia / Mes
+              </span>
+              <div className="text-2xl font-black text-white font-mono">
+                ${reportData.monthlyForecast.netAgencyUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                <span className="text-xs font-sans text-emerald-400">USD</span>
+              </div>
+              <p className="text-xs font-mono font-bold text-emerald-400 mt-1">
+                Bs. {formatBs(reportData.monthlyForecast.netAgencyBs)}
+              </p>
+              <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                Monto limpio que ingresa a Tu Naranja Digital
+              </div>
+            </div>
+
+            {/* Total Bruto Recurrente */}
+            <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-xl">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Facturación Bruta Clientes
+              </span>
+              <div className="text-2xl font-black text-slate-200 font-mono">
+                ${reportData.monthlyForecast.grossTotalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                <span className="text-xs font-sans text-slate-400">USD</span>
+              </div>
+              <p className="text-xs font-mono text-slate-400 mt-1">
+                Bs. {formatBs(reportData.monthlyForecast.grossTotalBs)}
+              </p>
+              <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                {reportData.monthlyForecast.regularClientsCount} clientes recurrentes activos
+              </div>
+            </div>
+
+            {/* Deducción Isa / Autopartes */}
+            <div className="bg-slate-950/70 border border-amber-500/30 p-4 rounded-xl">
+              <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-1">
+                <span>Deducción Compartida (Isa)</span>
+                <Handshake className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <div className="text-2xl font-black text-amber-300 font-mono">
+                -${reportData.monthlyForecast.sharedIsaDeductionUsd.toFixed(2)}{' '}
+                <span className="text-xs font-sans text-amber-400/80">USD</span>
+              </div>
+              <p className="text-xs text-amber-200/90 font-medium mt-1">
+                Autopartes Los Rosales ($100 Isa)
+              </p>
+              <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                Se descuenta del neto de la agencia
+              </div>
+            </div>
+
+            {/* Excluidos por Convenio */}
+            <div className="bg-slate-950/70 border border-purple-500/30 p-4 rounded-xl">
+              <div className="flex items-center justify-between text-[11px] font-bold text-purple-300 uppercase tracking-wider mb-1">
+                <span>Excluidos por Convenio</span>
+                <Info className="w-3.5 h-3.5 text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-purple-300 font-mono">
+                {reportData.monthlyForecast.agreementClientsCount}{' '}
+                <span className="text-xs font-sans text-purple-300/80">Cliente(s)</span>
+              </div>
+              <p className="text-xs text-purple-200/90 font-medium mt-1">
+                Odontólogo / Arinita ($170)
+              </p>
+              <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-800">
+                No computable en pronóstico regular
+              </div>
+            </div>
+          </div>
+
+          {/* Observaciones Específicas / Reglas Clave */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
+              <span className="text-base leading-none">🤝</span>
+              <div className="text-xs">
+                <span className="font-bold text-amber-300 block mb-0.5">Autopartes Los Rosales (Cliente Compartido)</span>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  A pesar de cobrar <strong>$200 en efectivo</strong>, <strong>$100 corresponden a Isabelle</strong> y <strong>$100 a la agencia</strong>. El sistema resta automáticamente los $100 de Isa para calcular el neto real de Tu Naranja Digital.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-3 flex items-start gap-2.5">
+              <span className="text-base leading-none">🔒</span>
+              <div className="text-xs">
+                <span className="font-bold text-purple-300 block mb-0.5">Exclusión de Acuerdos / Convenios</span>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Los clientes bajo modalidad de intercambio o acuerdo especial (como <strong>Odontólogo / Arinita - $170</strong>) quedan automáticamente excluidos de la facturación pronosticada para no inflar el flujo de caja esperado.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desglose desplegable de clientes en el pronóstico */}
+          {showForecastList && (
+            <div className="mt-5 pt-4 border-t border-slate-800">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+                Listado Detallado de Clientes en el Pronóstico ({reportData.monthlyForecast.forecastClientsList.length} clientes regulares)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {reportData.monthlyForecast.forecastClientsList.map((fc: any) => (
+                  <div key={fc.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-200">{fc.name}</div>
+                      <div className="text-[10px] text-slate-400">
+                        Corte: Día {fc.billing_day} • Tasa {fc.default_rate_type}
+                      </div>
+                      {fc.shared_note && (
+                        <div className="text-[10px] text-amber-400 font-medium mt-0.5">
+                          {fc.shared_note}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right font-mono">
+                      <div className="font-black text-emerald-400">${fc.agency_net_usd} <span className="text-[10px] font-normal text-slate-400">Neto</span></div>
+                      {fc.shared_isa_usd > 0 && (
+                        <div className="text-[10px] text-amber-400">($100 Isa)</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KPI Cards in the selected date range */}
       {reportData && (
@@ -445,7 +608,19 @@ export default function ReportsView() {
               ) : reportData?.clientBreakdown?.map((c: any) => (
                 <tr key={c.id} className="hover:bg-slate-850/60 transition">
                   <td className="py-3.5 px-4 font-semibold text-slate-200">
-                    <div>{c.name}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{c.name}</span>
+                      {c.id === 'los-rosales' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
+                          🤝 $100 Isa / $100 Agencia
+                        </span>
+                      )}
+                      {(c.id === 'arianita' || (c.notes && c.notes.toLowerCase().includes('convenio'))) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-medium">
+                          🔒 Acuerdo Especial (Excluido MRR)
+                        </span>
+                      )}
+                    </div>
                     {c.business_name && c.business_name !== c.name && (
                       <div className="text-[10px] text-slate-500">{c.business_name}</div>
                     )}

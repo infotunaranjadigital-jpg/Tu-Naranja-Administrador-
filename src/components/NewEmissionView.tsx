@@ -222,6 +222,17 @@ export default function NewEmissionView({
                     return <div>RIF: {selectedClient.rif || 'Sin RIF'} | Telf: {selectedClient.phone || 'N/A'}</div>;
                   })()}
                   <div className="text-[11px] text-slate-500 truncate">{selectedClient.address || 'Caracas'}</div>
+                  {selectedClient.id === 'los-rosales' ? (
+                    <div className="mt-2 p-2 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-200 text-xs flex items-center gap-1.5 font-medium">
+                      <span>🤝</span>
+                      <span>Cliente compartido con Isabelle ($100 corresponden a Isa / $100 a la agencia).</span>
+                    </div>
+                  ) : selectedClient.notes ? (
+                    <div className="mt-2 p-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 text-[11px] flex items-center gap-1.5">
+                      <span className="text-orange-400">ℹ️</span>
+                      <span>{selectedClient.notes}</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

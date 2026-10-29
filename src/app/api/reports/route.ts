@@ -152,6 +152,82 @@ export async function GET(req: Request) {
   `);
   const pendingDebts = pendingStmt.all();
 
+  // 6. Pronóstico de Ingreso Mensual Recurrente (MRR)
+  // Excluye clientes por acuerdos o convenios especiales.
+  // En Autopartes Los Rosales ($200 efectivo), $100 corresponden a Isa y $100 a la agencia.
+  const allActiveClients = db.prepare('SELECT * FROM clients WHERE active = 1 ORDER BY billing_day ASC, name ASC').all() as any[];
+  
+  let bcvRate = 888.12;
+  const latestRateRow = db.prepare('SELECT bcv_usd FROM exchange_rates ORDER BY date DESC LIMIT 1').get() as any;
+  if (latestRateRow?.bcv_usd) bcvRate = Number(latestRateRow.bcv_usd);
+
+  let forecastGrossUsd = 0;
+  let sharedIsaDeduction = 0;
+  let regularClientsCount = 0;
+  const forecastClientsList: any[] = [];
+  const agreementClientsList: any[] = [];
+
+  for (const c of allActiveClients) {
+    const isAgreement = c.id === 'arianita' || 
+      (c.notes && (c.notes.toLowerCase().includes('convenio') || c.notes.toLowerCase().includes('acuerdo')));
+    const isAutopartes = c.id === 'los-rosales';
+
+    if (isAgreement) {
+      agreementClientsList.push({
+        id: c.id,
+        name: c.name,
+        business_name: c.business_name,
+        base_monthly_fee: c.base_monthly_fee,
+        reason: 'Cliente por acuerdo o convenio especial (excluido de pronóstico fijo recurrente)'
+      });
+    } else {
+      let clientFee = Number(c.base_monthly_fee) || 0;
+      let netForAgency = clientFee;
+      let sharedForIsa = 0;
+
+      if (isAutopartes) {
+        sharedForIsa = 100; // $100 corresponden a Isa
+        netForAgency = 100; // $100 corresponden a la agencia
+        sharedIsaDeduction += sharedForIsa;
+      }
+
+      forecastGrossUsd += clientFee;
+      regularClientsCount++;
+
+      forecastClientsList.push({
+        id: c.id,
+        name: c.name,
+        business_name: c.business_name,
+        billing_day: c.billing_day,
+        total_fee_usd: clientFee,
+        agency_net_usd: netForAgency,
+        shared_isa_usd: sharedForIsa,
+        default_rate_type: c.default_rate_type,
+        shared_note: isAutopartes 
+          ? 'Cliente compartido con Isabelle ($100 corresponden a Isa / $100 a la agencia)' 
+          : null
+      });
+    }
+  }
+
+  const forecastNetAgencyUsd = forecastGrossUsd - sharedIsaDeduction;
+  const forecastNetAgencyBs = Number((forecastNetAgencyUsd * bcvRate).toFixed(2));
+  const forecastGrossBs = Number((forecastGrossUsd * bcvRate).toFixed(2));
+
+  const monthlyForecast = {
+    grossTotalUsd: forecastGrossUsd,
+    grossTotalBs: forecastGrossBs,
+    sharedIsaDeductionUsd: sharedIsaDeduction,
+    netAgencyUsd: forecastNetAgencyUsd,
+    netAgencyBs: forecastNetAgencyBs,
+    bcvRateApplied: bcvRate,
+    regularClientsCount,
+    agreementClientsCount: agreementClientsList.length,
+    forecastClientsList,
+    agreementClientsList,
+    sharedAutopartesNote: 'Autopartes Los Rosales cobra $200 en efectivo: $100 corresponden a Isabelle y $100 a Tu Naranja Digital.'
+  };
+
   return NextResponse.json({
     range: { startDate, endDate },
     totals,
@@ -163,6 +239,7 @@ export async function GET(req: Request) {
       lowestAmount: minAmount !== Infinity ? minAmount : 0
     },
     comparison,
+    monthlyForecast,
     clientBreakdown,
     pendingDebts
   });

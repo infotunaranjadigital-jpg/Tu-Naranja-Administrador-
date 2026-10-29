@@ -512,7 +512,7 @@ export function syncCanonicalClients() {
   const db = getDb();
   
   // Mapeo oficial de RIFs extraídos del Listado Oficial del cliente
-  const updates: Record<string, { rif: string; business_name?: string }> = {
+  const updates: Record<string, { rif: string; business_name?: string; notes?: string }> = {
     'sovemo': { rif: 'J-30327967-8', business_name: 'SOC. VEN. DE MENOPAUSIA Y OSTEOPOROSIS - SOVEMO' },
     'english-lab': { rif: 'J-30707830-8', business_name: 'English Lab' },
     'mantica': { rif: 'J-00059876-2', business_name: 'Materno Infantil C.A (MANTICA)' },
@@ -524,20 +524,24 @@ export function syncCanonicalClients() {
     'arias-doc': { rif: 'V-11312990-1, V-06625245-7, V-03120276-7', business_name: 'Arias DOC' },
     'dra-fanny-toro': { rif: 'V-13872720-0', business_name: 'Dra. Fanny Toro' },
     'dr-gerardo': { rif: 'V-9486579-0', business_name: 'Dr. Gerardo' },
-    'los-rosales': { rif: 'J-50706696-7', business_name: 'Autorepuestos Los Rosales C.A.' },
+    'los-rosales': { 
+      rif: 'J-50706696-7', 
+      business_name: 'Autorepuestos Los Rosales C.A.',
+      notes: 'Cliente compartido con Isabelle. Cobro $200 en efectivo: $100 corresponden a Isa y $100 a la agencia.'
+    },
     'fetal-care': { rif: '', business_name: 'Fetal Care C.A. (Sin RIF)' },
     'feminaid': { rif: 'J-50125683-7', business_name: 'Servicios Feminaid 2021 CA' }
   };
 
-  const updateStmt = db.prepare('UPDATE clients SET rif = ?, business_name = COALESCE(?, business_name) WHERE id = ?');
+  const updateStmt = db.prepare('UPDATE clients SET rif = ?, business_name = COALESCE(?, business_name), notes = COALESCE(?, notes) WHERE id = ?');
   for (const [id, data] of Object.entries(updates)) {
-    updateStmt.run(data.rif, data.business_name || null, id);
+    updateStmt.run(data.rif, data.business_name || null, (data as any).notes || null, id);
   }
 
   // Odontólogo / Arinita (Convenio especial con ambos RIFs)
   const arianita = db.prepare('SELECT id FROM clients WHERE id = ?').get('arianita');
   if (arianita) {
-    updateStmt.run('V-15200632-9, J-50811817-0', 'Odontólogo / Arinita', 'arianita');
+    updateStmt.run('V-15200632-9, J-50811817-0', 'Odontólogo / Arinita', 'Convenio / acuerdo especial (excluido de pronóstico mensual recurrente).', 'arianita');
   } else {
     db.prepare(`
       INSERT INTO clients (
@@ -548,7 +552,7 @@ export function syncCanonicalClients() {
     `).run(
       'arianita', 'Odontólogo / Arinita', 'Odontólogo / Arinita', 'V-15200632-9, J-50811817-0',
       '', '', 'Caracas, Venezuela',
-      'USD', 170.0, 0, 'BCV', 1, 'RECIBO', 'Convenio especial Odontólogo / Arinita.'
+      'USD', 170.0, 0, 'BCV', 1, 'RECIBO', 'Convenio / acuerdo especial (excluido de pronóstico mensual recurrente).'
     );
   }
 

@@ -275,6 +275,30 @@ export default function ClientsView({
                   Último ajuste: {client.last_fee_adjustment_date}
                 </div>
               )}
+
+              {/* Badges / Notas de Cliente */}
+              {client.id === 'los-rosales' ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">🤝</span>
+                  <div>
+                    <span className="font-bold text-amber-300 block">Cliente Compartido con Isabelle:</span>
+                    <span>Cobro $200 en efectivo: $100 corresponden a Isa y $100 a la agencia.</span>
+                  </div>
+                </div>
+              ) : (client.id === 'arianita' || (client.notes && client.notes.toLowerCase().includes('convenio'))) ? (
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-2.5 text-[11px] text-purple-200 mb-3 flex items-start gap-2">
+                  <span className="shrink-0 text-base leading-none">🔒</span>
+                  <div>
+                    <span className="font-bold text-purple-300 block">Convenio / Acuerdo Especial:</span>
+                    <span>Excluido del pronóstico regular mensual (MRR).</span>
+                  </div>
+                </div>
+              ) : client.notes ? (
+                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-[11px] text-slate-300 mb-3 flex items-start gap-2">
+                  <span className="text-orange-400 shrink-0">ℹ️</span>
+                  <span>{client.notes}</span>
+                </div>
+              ) : null}
             </div>
 
             {/* Actions Bar */}
