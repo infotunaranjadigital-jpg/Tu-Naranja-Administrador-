@@ -124,7 +124,7 @@ export function seedDatabase() {
         id: "soc-mastologia",
         name: "Sociedad de Mastologia",
         business_name: "Sociedad Venezolana de Mastologia",
-        rif: "J-00000000-0",
+        rif: "J-00331364-5",
         phone: "",
         email: "",
         address: "Caracas, Venezuela",
@@ -133,14 +133,14 @@ export function seedDatabase() {
         meta_ads_budget: 0.0,
         default_rate_type: "BCV",
         billing_day: 1,
-        preferred_document: "RECIBO",
-        notes: ""
+        preferred_document: "FORMA_LIBRE",
+        notes: "Emisión en Factura Forma Libre (+16% IVA). Retención SENIAT opcional/por verificar."
       },
       {
         id: "soc-oncologia",
         name: "Sociedad Venezolana de Oncologia",
         business_name: "Sociedad Venezolana de Oncologia",
-        rif: "J-00000000-0",
+        rif: "J-00257350-3",
         phone: "",
         email: "",
         address: "Caracas, Venezuela",
@@ -149,8 +149,8 @@ export function seedDatabase() {
         meta_ads_budget: 0.0,
         default_rate_type: "BCV",
         billing_day: 26,
-        preferred_document: "RECIBO",
-        notes: "Ajuste 2026 a $240 (anterior $200)."
+        preferred_document: "FORMA_LIBRE",
+        notes: "Emisión en Factura Forma Libre (+16% IVA). Retención SENIAT opcional/por verificar."
       },
       {
         id: "dr-gerardo",
@@ -627,12 +627,16 @@ export function syncCanonicalClients() {
     'soc-oncologia': { 
       rif: 'J-00257350-3', 
       business_name: 'Sociedad Venezolana de Oncologia (SVO)',
-      base_monthly_fee: 240.0
+      base_monthly_fee: 240.0,
+      preferred_document: 'FORMA_LIBRE',
+      notes: 'Factura fiscal Forma Libre (+16% IVA). Retención SENIAT opcional/por confirmar.'
     },
     'soc-mastologia': { 
       rif: 'J-00331364-5', 
       business_name: 'Sociedad Venezolana de Mastologia (SVM)',
-      base_monthly_fee: 240.0
+      base_monthly_fee: 240.0,
+      preferred_document: 'FORMA_LIBRE',
+      notes: 'Factura fiscal Forma Libre (+16% IVA). Retención SENIAT opcional/por confirmar.'
     },
     'fototecno': { 
       rif: 'J-50765898-2', 
@@ -677,6 +681,7 @@ export function syncCanonicalClients() {
         notes = COALESCE(?, notes),
         base_monthly_fee = COALESCE(?, base_monthly_fee),
         default_rate_type = COALESCE(?, default_rate_type),
+        preferred_document = COALESCE(?, preferred_document),
         is_withholding_agent = COALESCE(?, is_withholding_agent),
         iva_retention_percent = COALESCE(?, iva_retention_percent),
         islr_retention_percent = COALESCE(?, islr_retention_percent)
@@ -702,6 +707,7 @@ export function syncCanonicalClients() {
         data.notes || null, 
         data.base_monthly_fee !== undefined ? data.base_monthly_fee : null,
         data.default_rate_type || null,
+        data.preferred_document || null,
         data.is_withholding_agent !== undefined ? data.is_withholding_agent : null,
         data.iva_retention_percent !== undefined ? data.iva_retention_percent : null,
         data.islr_retention_percent !== undefined ? data.islr_retention_percent : null,
