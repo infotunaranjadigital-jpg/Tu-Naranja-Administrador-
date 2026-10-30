@@ -35,6 +35,8 @@ export default function ReportsView() {
   // Filtro de categoría en gráfico dinámico (Estilo Notion)
   const [selectedAreaTab, setSelectedAreaTab] = useState<string>('ALL');
   const [selectedMonthDetail, setSelectedMonthDetail] = useState<string | null>(null);
+  const [chartViewMode, setChartViewMode] = useState<'pie' | 'bars'>('pie');
+  const [hoveredCategory, setHoveredCategory] = useState<any | null>(null);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -736,167 +738,442 @@ export default function ReportsView() {
             </div>
           </div>
 
-          {/* Gráfico Dinámico Mensual Interactivo */}
-          <div className="bg-slate-950 border border-slate-800/90 rounded-xl p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          {/* Gráfico Dinámico: Torta (Pie Chart) o Barras Apiladas */}
+          <div className="bg-slate-950 border border-slate-800/90 rounded-xl p-5 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-slate-800/80 pb-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  📊 Evolución Mensual por Categoría ({selectedAreaTab === 'ALL' ? 'Todas las Áreas Apiladas' : selectedAreaTab})
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>{chartViewMode === 'pie' ? '🥧' : '📊'}</span>
+                  <span>
+                    {chartViewMode === 'pie' 
+                      ? 'Distribución de Ingresos por Categoría (Gráfico de Torta)' 
+                      : `Evolución Mensual por Categoría (${selectedAreaTab === 'ALL' ? 'Todas las Áreas' : selectedAreaTab})`}
+                  </span>
                 </h4>
-                <p className="text-xs text-slate-400">
-                  {selectedAreaTab === 'ALL' 
-                    ? 'Pasa el cursor o haz click sobre cada mes para ver el desglose exacto de servicios.'
-                    : `Filtrado exclusivamente por: ${selectedAreaTab}`}
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {chartViewMode === 'pie'
+                    ? 'Pasa el cursor sobre los segmentos de la torta para ver el aporte de cada servicio.'
+                    : 'Pasa el cursor o haz click sobre cada mes para ver el desglose exacto de servicios.'}
                 </p>
               </div>
 
-              {selectedMonthDetail && (
-                <button
-                  onClick={() => setSelectedMonthDetail(null)}
-                  className="text-[11px] text-orange-400 hover:underline flex items-center gap-1"
-                >
-                  Limpiar mes seleccionado ({getMonthName(selectedMonthDetail)})
-                </button>
-              )}
+              {/* Controles: Selector de modo (Torta vs Barras) y Limpiar mes */}
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedMonthDetail && (
+                  <button
+                    onClick={() => setSelectedMonthDetail(null)}
+                    className="text-[11px] px-2.5 py-1 bg-slate-900 border border-slate-700 text-orange-400 hover:text-orange-300 rounded-lg flex items-center gap-1 transition"
+                  >
+                    <span>Limpiar mes ({getMonthName(selectedMonthDetail)})</span>
+                    <span className="text-xs">✕</span>
+                  </button>
+                )}
+
+                <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setChartViewMode('pie')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                      chartViewMode === 'pie'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <PieChart className="w-3.5 h-3.5" />
+                    <span>Torta</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartViewMode('bars')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                      chartViewMode === 'bars'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>Barras</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Canvas de Barras */}
-            {reportData.categoryAnalysis.monthlyCategorySeries.length === 0 ? (
-              <div className="py-12 text-center text-slate-500 text-xs">
-                No hay movimientos registrados en este período.
-              </div>
-            ) : (
-              <div>
-                {(() => {
-                  const series = reportData.categoryAnalysis.monthlyCategorySeries;
-                  // Calcular valor máximo según el filtro seleccionado
-                  let maxVal = 100;
-                  series.forEach((s: any) => {
-                    let v = s.totalUsd;
-                    if (selectedAreaTab === 'MARKETING') v = s.groups?.MARKETING || 0;
-                    else if (selectedAreaTab !== 'ALL') v = s.categories?.[selectedAreaTab] || 0;
-                    if (v > maxVal) maxVal = v;
-                  });
+            {/* VISTA 1: GRÁFICO DE TORTA / DONUT CHART */}
+            {chartViewMode === 'pie' && (() => {
+              // Calcular datos de los slices
+              const breakdown = reportData.categoryAnalysis.categoryBreakdown || [];
+              let activeItems = breakdown.filter((c: any) => c.totalUsd > 0);
 
-                  return (
-                    <div className="h-64 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-800 overflow-x-auto">
-                      {series.map((s: any) => {
-                        let activeVal = s.totalUsd;
-                        if (selectedAreaTab === 'MARKETING') activeVal = s.groups?.MARKETING || 0;
-                        else if (selectedAreaTab !== 'ALL') activeVal = s.categories?.[selectedAreaTab] || 0;
+              if (selectedMonthDetail) {
+                const mData = reportData.categoryAnalysis.monthlyCategorySeries.find((s: any) => s.month === selectedMonthDetail);
+                if (mData) {
+                  activeItems = breakdown
+                    .map((c: any) => {
+                      const usd = mData.categories?.[c.id] || 0;
+                      return {
+                        ...c,
+                        totalUsd: usd,
+                        totalBs: Number((usd * (reportData.kpis?.avgBcvRate || 888)).toFixed(2)),
+                        percent: mData.totalUsd > 0 ? Number(((usd / mData.totalUsd) * 100).toFixed(1)) : 0
+                      };
+                    })
+                    .filter((c: any) => c.totalUsd > 0);
+                }
+              }
 
-                        const heightPercent = Math.max(Math.round((activeVal / maxVal) * 100), 6);
-                        const isSelected = selectedMonthDetail === s.month;
+              const totalPieUsd = activeItems.reduce((acc: number, c: any) => acc + (c.totalUsd || 0), 0);
+              const totalPieBs = activeItems.reduce((acc: number, c: any) => acc + (c.totalBs || 0), 0);
 
+              if (totalPieUsd <= 0 || activeItems.length === 0) {
+                return (
+                  <div className="py-16 text-center text-slate-500 text-xs">
+                    No hay ingresos registrados para mostrar el gráfico de torta en este rango.
+                  </div>
+                );
+              }
+
+              // Preparar arcos matemáticos
+              let runningPercent = 0;
+              const slices = activeItems.map((c: any) => {
+                const slicePercent = c.totalUsd / totalPieUsd;
+                const startPercent = runningPercent;
+                runningPercent += slicePercent;
+                const endPercent = runningPercent;
+                return {
+                  ...c,
+                  slicePercent,
+                  startPercent,
+                  endPercent,
+                  percentNum: (slicePercent * 100).toFixed(1)
+                };
+              });
+
+              // Coordenadas trigonométricas para Donut SVG
+              const cx = 130;
+              const cy = 130;
+              const outerRadius = 100;
+              const innerRadius = 62;
+
+              const getCoords = (p: number, r: number) => {
+                const angle = (p * 2 * Math.PI) - (Math.PI / 2);
+                return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+              };
+
+              const createPath = (startP: number, endP: number) => {
+                if (endP - startP >= 0.999) {
+                  return [
+                    `M ${cx} ${cy - outerRadius}`,
+                    `A ${outerRadius} ${outerRadius} 0 1 1 ${cx} ${cy + outerRadius}`,
+                    `A ${outerRadius} ${outerRadius} 0 1 1 ${cx} ${cy - outerRadius}`,
+                    `M ${cx} ${cy - innerRadius}`,
+                    `A ${innerRadius} ${innerRadius} 0 1 0 ${cx} ${cy + innerRadius}`,
+                    `A ${innerRadius} ${innerRadius} 0 1 0 ${cx} ${cy - innerRadius}`,
+                    'Z'
+                  ].join(' ');
+                }
+
+                const [sX, sY] = getCoords(startP, outerRadius);
+                const [eX, eY] = getCoords(endP, outerRadius);
+                const [inSx, inSy] = getCoords(endP, innerRadius);
+                const [inEx, inEy] = getCoords(startP, innerRadius);
+                const largeArc = (endP - startP) > 0.5 ? 1 : 0;
+
+                return [
+                  `M ${sX} ${sY}`,
+                  `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${eX} ${eY}`,
+                  `L ${inSx} ${inSy}`,
+                  `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${inEx} ${inEy}`,
+                  'Z'
+                ].join(' ');
+              };
+
+              const currentHover = hoveredCategory || slices[0];
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  {/* Donut SVG Interactivo */}
+                  <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
+                    <svg
+                      viewBox="0 0 260 260"
+                      className="w-full max-w-[270px] h-auto drop-shadow-xl select-none"
+                    >
+                      {/* Fondo de dona vacío por si acaso */}
+                      <circle cx={cx} cy={cy} r={outerRadius} fill="none" stroke="#1e293b" strokeWidth="38" />
+
+                      {/* Slices de la torta */}
+                      {slices.map((slice: any) => {
+                        const isHovered = hoveredCategory?.id === slice.id;
                         return (
-                          <div
-                            key={s.month}
-                            onClick={() => setSelectedMonthDetail(isSelected ? null : s.month)}
-                            className="flex-1 min-w-[70px] flex flex-col items-center gap-2 group h-full justify-end cursor-pointer"
-                          >
-                            {/* Monto sobre la barra */}
-                            <div className="text-[11px] font-mono font-bold text-slate-200 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition">
-                              ${activeVal.toFixed(0)}
-                            </div>
-
-                            {/* Barra con segmentos apilados */}
-                            <div
-                              className={`w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col-reverse transition-all duration-300 relative ${
-                                isSelected ? 'ring-2 ring-orange-400 brightness-110 shadow-lg' : 'hover:brightness-110'
-                              }`}
-                              style={{ height: `${heightPercent}%` }}
-                            >
-                              {selectedAreaTab === 'ALL' ? (
-                                <>
-                                  {/* Renglones apilados */}
-                                  {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
-                                    const catUsd = s.categories?.[cat.id] || 0;
-                                    if (catUsd <= 0 || s.totalUsd <= 0) return null;
-                                    const segHeight = (catUsd / s.totalUsd) * 100;
-                                    return (
-                                      <div
-                                        key={cat.id}
-                                        style={{ height: `${segHeight}%`, backgroundColor: cat.color }}
-                                        title={`${cat.name}: $${catUsd.toFixed(2)}`}
-                                        className="w-full"
-                                      />
-                                    );
-                                  })}
-                                </>
-                              ) : selectedAreaTab === 'MARKETING' ? (
-                                <>
-                                  {/* Subdesglose de marketing */}
-                                  {s.categories?.MARKETING_RRSS > 0 && (
-                                    <div style={{ height: `${(s.categories.MARKETING_RRSS / activeVal) * 100}%`, backgroundColor: '#f97316' }} />
-                                  )}
-                                  {s.categories?.MARKETING_ADS > 0 && (
-                                    <div style={{ height: `${(s.categories.MARKETING_ADS / activeVal) * 100}%`, backgroundColor: '#06b6d4' }} />
-                                  )}
-                                  {s.categories?.MARKETING_OTROS > 0 && (
-                                    <div style={{ height: `${(s.categories.MARKETING_OTROS / activeVal) * 100}%`, backgroundColor: '#a855f7' }} />
-                                  )}
-                                </>
-                              ) : (
-                                <div
-                                  className="w-full h-full"
-                                  style={{
-                                    backgroundColor:
-                                      selectedAreaTab === 'DESARROLLO' ? '#3b82f6' :
-                                      selectedAreaTab === 'GRABACIONES' ? '#f59e0b' :
-                                      selectedAreaTab === 'FORMACION' ? '#10b981' : '#ec4899'
-                                  }}
-                                />
-                              )}
-                            </div>
-
-                            {/* Etiqueta del Mes */}
-                            <div className={`text-[11px] font-semibold mt-1 whitespace-nowrap ${
-                              isSelected ? 'text-orange-400 font-bold' : 'text-slate-400'
-                            }`}>
-                              {getMonthName(s.month)}
-                            </div>
-                          </div>
+                          <path
+                            key={slice.id}
+                            d={createPath(slice.startPercent, slice.endPercent)}
+                            fill={slice.color}
+                            stroke="#020617"
+                            strokeWidth="2.5"
+                            className="transition-all duration-200 cursor-pointer origin-center"
+                            style={{
+                              transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                              transformOrigin: `${cx}px ${cy}px`,
+                              filter: isHovered ? 'brightness(1.2) drop-shadow(0 0 8px rgba(0,0,0,0.5))' : 'none',
+                              opacity: hoveredCategory && !isHovered ? 0.6 : 1
+                            }}
+                            onMouseEnter={() => setHoveredCategory(slice)}
+                            onMouseLeave={() => setHoveredCategory(null)}
+                            onClick={() => setSelectedAreaTab(slice.id === 'MARKETING_RRSS' || slice.id === 'MARKETING_ADS' || slice.id === 'MARKETING_OTROS' ? 'MARKETING' : slice.id)}
+                          />
                         );
                       })}
+
+                      {/* Centro interactivo de la dona */}
+                      <circle cx={cx} cy={cy} r={innerRadius - 4} fill="#090d16" />
+
+                      {/* Textos centrales */}
+                      <g className="text-center pointer-events-none" textAnchor="middle">
+                        {hoveredCategory ? (
+                          <>
+                            <text x={cx} y={cy - 20} className="fill-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                              {hoveredCategory.icon} {hoveredCategory.name.length > 18 ? hoveredCategory.name.slice(0, 16) + '…' : hoveredCategory.name}
+                            </text>
+                            <text x={cx} y={cy + 3} className="fill-white font-mono font-black text-[18px]">
+                              ${hoveredCategory.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 0 })}
+                            </text>
+                            <text x={cx} y={cy + 22} className="fill-orange-400 font-mono font-bold text-[12px]">
+                              {hoveredCategory.percentNum || hoveredCategory.percent}%
+                            </text>
+                          </>
+                        ) : (
+                          <>
+                            <text x={cx} y={cy - 18} className="fill-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                              {selectedMonthDetail ? getMonthName(selectedMonthDetail) : 'Total Período'}
+                            </text>
+                            <text x={cx} y={cy + 6} className="fill-white font-mono font-black text-[19px]">
+                              ${totalPieUsd.toLocaleString('es-VE', { minimumFractionDigits: 0 })}
+                            </text>
+                            <text x={cx} y={cy + 24} className="fill-slate-400 text-[10px] font-medium">
+                              USD Facturados
+                            </text>
+                          </>
+                        )}
+                      </g>
+                    </svg>
+
+                    <div className="mt-3 text-center">
+                      <span className="text-[11px] text-slate-400">
+                        {selectedMonthDetail ? (
+                          <span className="text-orange-400 font-medium">Mes: {getMonthName(selectedMonthDetail)}</span>
+                        ) : (
+                          <span>Distribución consolidada del negocio</span>
+                        )}
+                      </span>
                     </div>
-                  );
-                })()}
+                  </div>
 
-                {/* Tarjeta de Detalle del Mes Seleccionado */}
-                {selectedMonthDetail && (() => {
-                  const mData = reportData.categoryAnalysis.monthlyCategorySeries.find((s: any) => s.month === selectedMonthDetail);
-                  if (!mData) return null;
-                  return (
-                    <div className="mt-4 p-4 bg-slate-900 border border-orange-500/40 rounded-xl animate-in fade-in">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-orange-400 flex items-center gap-1.5">
-                          <span>🔍</span>
-                          Desglose Detallado de {getMonthName(mData.month)}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-white">
-                          Total Mes: ${mData.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
-                        {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
-                          const amt = mData.categories?.[cat.id] || 0;
-                          return (
-                            <div key={cat.id} className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs">
-                              <div className="flex items-center gap-1 text-[11px] text-slate-400 truncate">
-                                <span>{cat.icon}</span>
-                                <span className="truncate">{cat.name}</span>
-                              </div>
-                              <div className="font-mono font-bold text-sm text-white mt-1">
-                                ${amt.toFixed(2)}
+                  {/* Leyenda y Desglose Visual Tipo Notion */}
+                  <div className="lg:col-span-7 flex flex-col gap-2.5">
+                    {slices.map((cat: any) => {
+                      const isHovered = hoveredCategory?.id === cat.id;
+                      return (
+                        <div
+                          key={cat.id}
+                          onMouseEnter={() => setHoveredCategory(cat)}
+                          onMouseLeave={() => setHoveredCategory(null)}
+                          onClick={() => setSelectedAreaTab(cat.id === 'MARKETING_RRSS' || cat.id === 'MARKETING_ADS' || cat.id === 'MARKETING_OTROS' ? 'MARKETING' : cat.id)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                            isHovered
+                              ? 'bg-slate-900 border-orange-500/60 shadow-lg scale-[1.01]'
+                              : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-900/90 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            {/* Icono + Nombre */}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-sm"
+                                style={{ backgroundColor: cat.color }}
+                              />
+                              <div className="truncate">
+                                <span className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                                  <span>{cat.icon}</span>
+                                  <span className="truncate">{cat.name}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {cat.clientCount || cat.count} {cat.clientCount === 1 ? 'cliente' : 'clientes / servicios'}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+
+                            {/* Monto USD + Porcentaje Badge */}
+                            <div className="text-right flex items-center gap-3 flex-shrink-0">
+                              <div>
+                                <div className="font-mono font-bold text-sm text-white">
+                                  ${cat.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                </div>
+                                <div className="font-mono text-[10px] text-slate-400">
+                                  Bs. {formatBs(cat.totalBs)}
+                                </div>
+                              </div>
+                              <span
+                                className="font-mono font-bold text-xs px-2 py-1 rounded-md text-white min-w-[50px] text-center"
+                                style={{ backgroundColor: `${cat.color}33`, color: cat.color, border: `1px solid ${cat.color}66` }}
+                              >
+                                {cat.percentNum || cat.percent}%
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Mini Barra de Progreso */}
+                          <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${cat.percentNum || cat.percent}%`,
+                                backgroundColor: cat.color
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* VISTA 2: GRÁFICO DE BARRAS MENSUALES APILADAS */}
+            {chartViewMode === 'bars' && (
+              <div>
+                {reportData.categoryAnalysis.monthlyCategorySeries.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 text-xs">
+                    No hay movimientos registrados en este período.
+                  </div>
+                ) : (
+                  <div>
+                    {(() => {
+                      const series = reportData.categoryAnalysis.monthlyCategorySeries;
+                      let maxVal = 100;
+                      series.forEach((s: any) => {
+                        let v = s.totalUsd;
+                        if (selectedAreaTab === 'MARKETING') v = s.groups?.MARKETING || 0;
+                        else if (selectedAreaTab !== 'ALL') v = s.categories?.[selectedAreaTab] || 0;
+                        if (v > maxVal) maxVal = v;
+                      });
+
+                      return (
+                        <div className="h-64 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-800 overflow-x-auto">
+                          {series.map((s: any) => {
+                            let activeVal = s.totalUsd;
+                            if (selectedAreaTab === 'MARKETING') activeVal = s.groups?.MARKETING || 0;
+                            else if (selectedAreaTab !== 'ALL') activeVal = s.categories?.[selectedAreaTab] || 0;
+
+                            const heightPercent = Math.max(Math.round((activeVal / maxVal) * 100), 6);
+                            const isSelected = selectedMonthDetail === s.month;
+
+                            return (
+                              <div
+                                key={s.month}
+                                onClick={() => setSelectedMonthDetail(isSelected ? null : s.month)}
+                                className="flex-1 min-w-[70px] flex flex-col items-center gap-2 group h-full justify-end cursor-pointer"
+                              >
+                                <div className="text-[11px] font-mono font-bold text-slate-200 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition">
+                                  ${activeVal.toFixed(0)}
+                                </div>
+
+                                <div
+                                  className={`w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col-reverse transition-all duration-300 relative ${
+                                    isSelected ? 'ring-2 ring-orange-400 brightness-110 shadow-lg' : 'hover:brightness-110'
+                                  }`}
+                                  style={{ height: `${heightPercent}%` }}
+                                >
+                                  {selectedAreaTab === 'ALL' ? (
+                                    <>
+                                      {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
+                                        const catUsd = s.categories?.[cat.id] || 0;
+                                        if (catUsd <= 0 || s.totalUsd <= 0) return null;
+                                        const segHeight = (catUsd / s.totalUsd) * 100;
+                                        return (
+                                          <div
+                                            key={cat.id}
+                                            style={{ height: `${segHeight}%`, backgroundColor: cat.color }}
+                                            title={`${cat.name}: $${catUsd.toFixed(2)}`}
+                                            className="w-full"
+                                          />
+                                        );
+                                      })}
+                                    </>
+                                  ) : selectedAreaTab === 'MARKETING' ? (
+                                    <>
+                                      {s.categories?.MARKETING_RRSS > 0 && (
+                                        <div style={{ height: `${(s.categories.MARKETING_RRSS / activeVal) * 100}%`, backgroundColor: '#f97316' }} />
+                                      )}
+                                      {s.categories?.MARKETING_ADS > 0 && (
+                                        <div style={{ height: `${(s.categories.MARKETING_ADS / activeVal) * 100}%`, backgroundColor: '#06b6d4' }} />
+                                      )}
+                                      {s.categories?.MARKETING_OTROS > 0 && (
+                                        <div style={{ height: `${(s.categories.MARKETING_OTROS / activeVal) * 100}%`, backgroundColor: '#a855f7' }} />
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div
+                                      className="w-full h-full"
+                                      style={{
+                                        backgroundColor:
+                                          selectedAreaTab === 'DESARROLLO' ? '#3b82f6' :
+                                          selectedAreaTab === 'GRABACIONES' ? '#f59e0b' :
+                                          selectedAreaTab === 'FORMACION' ? '#10b981' : '#ec4899'
+                                      }}
+                                    />
+                                  )}
+                                </div>
+
+                                <div className={`text-[11px] font-semibold mt-1 whitespace-nowrap ${
+                                  isSelected ? 'text-orange-400 font-bold' : 'text-slate-400'
+                                }`}>
+                                  {getMonthName(s.month)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Tarjeta de Detalle del Mes Seleccionado en modo barras */}
+                    {selectedMonthDetail && (() => {
+                      const mData = reportData.categoryAnalysis.monthlyCategorySeries.find((s: any) => s.month === selectedMonthDetail);
+                      if (!mData) return null;
+                      return (
+                        <div className="mt-4 p-4 bg-slate-900 border border-orange-500/40 rounded-xl animate-in fade-in">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-orange-400 flex items-center gap-1.5">
+                              <span>🔍</span>
+                              Desglose Detallado de {getMonthName(mData.month)}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-white">
+                              Total Mes: ${mData.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
+                            {reportData.categoryAnalysis.categoryBreakdown.map((cat: any) => {
+                              const amt = mData.categories?.[cat.id] || 0;
+                              return (
+                                <div key={cat.id} className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs">
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-400 truncate">
+                                    <span>{cat.icon}</span>
+                                    <span className="truncate">{cat.name}</span>
+                                  </div>
+                                  <div className="font-mono font-bold text-sm text-white mt-1">
+                                    ${amt.toFixed(2)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
           </div>
