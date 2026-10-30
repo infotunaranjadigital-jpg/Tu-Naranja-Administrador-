@@ -12,6 +12,8 @@ import TeamView from '@/components/TeamView';
 import RateBarModal from '@/components/RateBarModal';
 import FormaLibrePrint from '@/components/FormaLibrePrint';
 import ReceiptPrint from '@/components/ReceiptPrint';
+import PaymentModal from '@/components/PaymentModal';
+import AccountsReceivablePayableModal from '@/components/AccountsReceivablePayableModal';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -23,6 +25,8 @@ export default function Home() {
   const [clients, setClients] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
+  const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false);
+  const [payModalDoc, setPayModalDoc] = useState<any>(null);
 
   // Emission / Print state
   const [selectedClientForEmission, setSelectedClientForEmission] = useState<any>(null);
@@ -125,17 +129,45 @@ export default function Home() {
   if (viewingDocument) {
     if (viewingDocument.doc_type === 'FORMA_LIBRE') {
       return (
-        <FormaLibrePrint 
-          document={viewingDocument} 
-          onBack={() => setViewingDocument(null)} 
-        />
+        <>
+          <FormaLibrePrint 
+            document={viewingDocument} 
+            onBack={() => setViewingDocument(null)}
+            onMarkPaid={() => setPayModalDoc(viewingDocument)}
+          />
+          <PaymentModal
+            document={payModalDoc}
+            bcvRate={rates?.bcv_usd || 888.12}
+            isOpen={!!payModalDoc}
+            onClose={() => setPayModalDoc(null)}
+            onPaymentSuccess={() => {
+              fetchDocuments();
+              fetchClients();
+              setViewingDocument((prev: any) => prev ? { ...prev, payment_status: 'PAID' } : null);
+            }}
+          />
+        </>
       );
     } else {
       return (
-        <ReceiptPrint 
-          document={viewingDocument} 
-          onBack={() => setViewingDocument(null)} 
-        />
+        <>
+          <ReceiptPrint 
+            document={viewingDocument} 
+            onBack={() => setViewingDocument(null)}
+            onMarkPaid={() => setPayModalDoc(viewingDocument)}
+          />
+          <PaymentModal
+            document={payModalDoc}
+            bcvRate={rates?.bcv_usd || 888.12}
+            isOpen={!!payModalDoc}
+            onClose={() => setPayModalDoc(null)}
+            onPaymentSuccess={() => {
+              fetchDocuments();
+              fetchClients();
+              setViewingDocument((prev: any) => prev ? { ...prev, payment_status: 'PAID' } : null);
+            }}
+          />
+        </>
       );
     }
   }
@@ -164,6 +196,8 @@ export default function Home() {
             onEmitForClient={handleEmitForClient}
             onViewDocument={(doc) => setViewingDocument(doc)}
             onTabChange={(tab) => setCurrentTab(tab)}
+            onOpenPayModal={(doc) => setPayModalDoc(doc)}
+            onOpenAccountsModal={() => setIsAccountsModalOpen(true)}
           />
         )}
 
@@ -209,6 +243,26 @@ export default function Home() {
           setRates(newRate);
           fetchRates();
         }}
+      />
+
+      <PaymentModal
+        document={payModalDoc}
+        bcvRate={rates?.bcv_usd || 888.12}
+        isOpen={!!payModalDoc}
+        onClose={() => setPayModalDoc(null)}
+        onPaymentSuccess={() => {
+          fetchDocuments();
+          fetchClients();
+        }}
+      />
+
+      <AccountsReceivablePayableModal
+        isOpen={isAccountsModalOpen}
+        onClose={() => setIsAccountsModalOpen(false)}
+        documents={documents}
+        clients={clients}
+        bcvRate={rates?.bcv_usd || 888.12}
+        onOpenPayModal={(doc) => setPayModalDoc(doc)}
       />
     </div>
   );

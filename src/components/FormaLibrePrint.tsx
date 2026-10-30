@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Printer, Settings2, Eye, EyeOff, ArrowLeft, Download } from 'lucide-react';
+import { Printer, Settings2, Eye, EyeOff, ArrowLeft, Download, CheckCircle } from 'lucide-react';
 
 interface FormaLibrePrintProps {
   document: any;
   onBack: () => void;
+  onMarkPaid?: () => void;
 }
 
-export default function FormaLibrePrint({ document: doc, onBack }: FormaLibrePrintProps) {
+export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: FormaLibrePrintProps) {
   // Offsets en milimetros para calibracion fina
   const [offsetX, setOffsetX] = useState<number>(0);
   const [offsetY, setOffsetY] = useState<number>(0);
@@ -92,6 +93,23 @@ export default function FormaLibrePrint({ document: doc, onBack }: FormaLibrePri
               Guardar
             </button>
           </div>
+
+          {doc.payment_status === 'PAID' ? (
+            <div className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>Cobrado</span>
+            </div>
+          ) : (
+            onMarkPaid && (
+              <button
+                onClick={onMarkPaid}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Registrar Cobro</span>
+              </button>
+            )
+          )}
 
           <button
             onClick={() => setShowGuide(!showGuide)}

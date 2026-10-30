@@ -15,6 +15,8 @@ interface DashboardViewProps {
   onEmitForClient: (client: any) => void;
   onViewDocument: (doc: any) => void;
   onTabChange: (tab: string) => void;
+  onOpenPayModal?: (doc: any) => void;
+  onOpenAccountsModal?: () => void;
 }
 
 export default function DashboardView({
@@ -23,7 +25,9 @@ export default function DashboardView({
   rates,
   onEmitForClient,
   onViewDocument,
-  onTabChange
+  onTabChange,
+  onOpenPayModal,
+  onOpenAccountsModal
 }: DashboardViewProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default en 'cuadrados' como pidió el usuario
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,12 +150,19 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Pendiente por Cobrar */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl" />
+        {/* Pendiente por Cobrar / Cuentas por Cobrar & Pagar */}
+        <div 
+          onClick={onOpenAccountsModal}
+          className="bg-slate-900 border border-slate-800 hover:border-amber-500/60 rounded-2xl p-5 shadow-lg relative overflow-hidden cursor-pointer group transition"
+          title="Haz clic para ver el control detallado de Cuentas por Cobrar y Cuentas por Pagar"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition" />
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Cuentas por Cobrar</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+            <span className="group-hover:text-amber-300 transition">Cuentas por Cobrar</span>
+            <div className="flex items-center gap-1 text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">
+              <span>Control</span>
+              <ArrowUpRight className="w-3 h-3" />
+            </div>
           </div>
           <div className="text-2xl font-black text-amber-400 font-mono">
             ${pendingBaseUsd.toFixed(2)} <span className="text-xs font-sans text-slate-400 font-normal">USD</span>
@@ -159,8 +170,9 @@ export default function DashboardView({
           <p className="text-xs text-amber-300 font-mono mt-1">
             {pendingDocs.length} pagos pendientes
           </p>
-          <div className="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-800">
-            Alertas de cobro por enviar
+          <div className="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span>Ver clientes & deudas</span>
+            <span className="text-amber-400 text-[10px] font-bold group-hover:translate-x-0.5 transition">Abrir panel ➔</span>
           </div>
         </div>
 
@@ -306,24 +318,32 @@ export default function DashboardView({
                   const isUrgent = c.daysRemaining <= 3;
                   const isNear = c.daysRemaining <= 7;
                   const estimatedBs = Number((c.base_monthly_fee * bcvRate).toFixed(2));
+                  const clientPendingDoc = documents.find(d => d.client_id === c.id && d.payment_status === 'PENDING');
 
                   return (
                     <div
                       key={c.id}
                       className={`group relative bg-slate-950/80 rounded-2xl p-4 border transition-all duration-200 hover:shadow-xl flex flex-col justify-between ${
-                        isToday
-                          ? 'border-rose-500/60 shadow-rose-950/20 hover:border-rose-400 ring-1 ring-rose-500/30'
-                          : isUrgent
-                            ? 'border-amber-500/50 shadow-amber-950/20 hover:border-amber-400'
-                            : isNear
-                              ? 'border-cyan-500/40 hover:border-cyan-400'
-                              : 'border-slate-800 hover:border-orange-500/40'
+                        clientPendingDoc
+                          ? 'border-amber-500/70 shadow-amber-950/30 ring-1 ring-amber-500/30'
+                          : isToday
+                            ? 'border-rose-500/60 shadow-rose-950/20 hover:border-rose-400 ring-1 ring-rose-500/30'
+                            : isUrgent
+                              ? 'border-amber-500/50 shadow-amber-950/20 hover:border-amber-400'
+                              : isNear
+                                ? 'border-cyan-500/40 hover:border-cyan-400'
+                                : 'border-slate-800 hover:border-orange-500/40'
                       }`}
                     >
                       {/* Top Bar: Proximidad + Documento */}
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2.5">
-                          {isToday ? (
+                          {clientPendingDoc ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-lg animate-pulse">
+                              <Clock className="w-3 h-3 text-amber-400" />
+                              Cobro Pendiente: ${clientPendingDoc.total_amount_currency}
+                            </span>
+                          ) : isToday ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-lg animate-pulse">
                               <AlertCircle className="w-3 h-3 text-rose-400" />
                               🚨 ¡VENCE HOY!
@@ -401,7 +421,7 @@ export default function DashboardView({
                         </div>
                       </div>
 
-                      {/* Tarifa & Acción de Emisión */}
+                      {/* Tarifa & Acción de Emisión / Cobro */}
                       <div className="pt-3 border-t border-slate-900 mt-1 flex items-end justify-between gap-2">
                         <div>
                           <div className="text-[10px] text-slate-500 uppercase font-semibold">
@@ -416,13 +436,33 @@ export default function DashboardView({
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => onEmitForClient(c)}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white flex items-center gap-1 transition shadow-md shadow-orange-600/30 active:scale-95"
-                        >
-                          Emitir
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                        {clientPendingDoc ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => onOpenPayModal?.(clientPendingDoc)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition shadow-md shadow-emerald-600/30 active:scale-95"
+                              title="Registrar cobro de la factura pendiente"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>Cobrar</span>
+                            </button>
+                            <button
+                              onClick={() => onEmitForClient(c)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800 transition"
+                              title="Emitir nuevo documento"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => onEmitForClient(c)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white flex items-center gap-1 transition shadow-md shadow-orange-600/30 active:scale-95"
+                          >
+                            <span>Emitir</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -527,19 +567,35 @@ export default function DashboardView({
                 {pendingDocs.slice(0, 5).map((d) => (
                   <div 
                     key={d.id} 
-                    onClick={() => onViewDocument(d)}
-                    className="p-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl cursor-pointer transition"
+                    className="p-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl transition flex items-center justify-between gap-2.5"
                   >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-200">{d.client_name}</span>
-                      <span className="font-mono font-bold text-amber-400">
-                        ${d.total_amount_currency} USD
-                      </span>
+                    <div 
+                      onClick={() => onViewDocument(d)}
+                      className="cursor-pointer flex-1 min-w-0"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-200 truncate">{d.client_name}</span>
+                        <span className="font-mono font-bold text-amber-400 shrink-0 ml-2">
+                          ${d.total_amount_currency} USD
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                        <span>{d.doc_type === 'FORMA_LIBRE' ? `Factura #${d.doc_number}` : `Recibo #${d.doc_number}`}</span>
+                        <span>{d.issue_date}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                      <span>{d.doc_type === 'FORMA_LIBRE' ? `Factura #${d.doc_number}` : `Recibo #${d.doc_number}`}</span>
-                      <span>{d.issue_date}</span>
-                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenPayModal?.(d);
+                      }}
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-600/20 transition shrink-0 active:scale-95"
+                      title="Registrar cobro de esta factura/recibo"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Cobrar</span>
+                    </button>
                   </div>
                 ))}
               </div>
