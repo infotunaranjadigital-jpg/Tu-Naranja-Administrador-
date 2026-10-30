@@ -12,6 +12,7 @@ import TeamView from '@/components/TeamView';
 import RateBarModal from '@/components/RateBarModal';
 import FormaLibrePrint from '@/components/FormaLibrePrint';
 import ReceiptPrint from '@/components/ReceiptPrint';
+import PresupuestoPrint from '@/components/PresupuestoPrint';
 import PaymentModal from '@/components/PaymentModal';
 import AccountsReceivablePayableModal from '@/components/AccountsReceivablePayableModal';
 
@@ -127,7 +128,14 @@ export default function Home() {
 
   // If currently viewing a document for printing
   if (viewingDocument) {
-    if (viewingDocument.doc_type === 'FORMA_LIBRE') {
+    if (viewingDocument.doc_type === 'PRESUPUESTO') {
+      return (
+        <PresupuestoPrint
+          document={viewingDocument}
+          onBack={() => setViewingDocument(null)}
+        />
+      );
+    } else if (viewingDocument.doc_type === 'FORMA_LIBRE') {
       return (
         <>
           <FormaLibrePrint 

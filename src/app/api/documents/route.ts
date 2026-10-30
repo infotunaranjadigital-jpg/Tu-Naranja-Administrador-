@@ -3,6 +3,19 @@ import { getDb } from '@/lib/db';
 import { validateApiKey, getCurrentUser } from '@/lib/auth';
 import { seedDatabase } from '@/lib/seed';
 
+function addBusinessDays(startDateStr: string, businessDays: number = 3): string {
+  const date = new Date(startDateStr + 'T12:00:00');
+  let added = 0;
+  while (added < businessDays) {
+    date.setDate(date.getDate() + 1);
+    const day = date.getDay(); // 0 is Sunday, 6 is Saturday
+    if (day !== 0 && day !== 6) {
+      added++;
+    }
+  }
+  return date.toISOString().split('T')[0];
+}
+
 export async function GET(req: Request) {
   seedDatabase();
   const db = getDb();
@@ -63,8 +76,8 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
-    const {
-      doc_type, // 'FORMA_LIBRE' o 'RECIBO'
+    let {
+      doc_type, // 'FORMA_LIBRE', 'RECIBO' o 'PRESUPUESTO'
       client_id,
       client_rif,
       issue_date,
@@ -77,15 +90,55 @@ export async function POST(req: Request) {
       notes,
       payment_method,
       payment_reference,
-      is_paid = false
+      is_paid = false,
+      prospect_name,
+      prospect_business_name,
+      prospect_phone,
+      prospect_email,
+      prospect_address
     } = data;
 
-    if (!doc_type || !client_id || !items || !items.length) {
-      return NextResponse.json({ error: 'Faltan campos requeridos (doc_type, client_id, items)' }, { status: 400 });
+    if (!doc_type || (!client_id && !prospect_name) || !items || !items.length) {
+      return NextResponse.json({ error: 'Faltan campos requeridos (doc_type, client_id o prospect_name, items)' }, { status: 400 });
     }
 
     const db = getDb();
-    const client = db.prepare('SELECT * FROM clients WHERE id = ?').get(client_id) as any;
+
+    // Si es un prospecto nuevo o no existe cliente, crearlo al vuelo
+    let client: any = null;
+    if (client_id && client_id !== 'NEW_PROSPECT') {
+      client = db.prepare('SELECT * FROM clients WHERE id = ?').get(client_id) as any;
+    }
+
+    if (!client && (prospect_name || prospect_business_name)) {
+      const pName = (prospect_business_name || prospect_name).trim();
+      const slugId = 'pros_' + pName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20) + '_' + Date.now().toString().slice(-4);
+      
+      const insertProspect = db.prepare(`
+        INSERT INTO clients (
+          id, name, business_name, rif, phone, email, address,
+          base_monthly_fee, meta_ads_budget, default_rate_type, billing_day,
+          preferred_document, notes, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `);
+
+      insertProspect.run(
+        slugId,
+        prospect_name || pName,
+        prospect_business_name || pName,
+        client_rif || null,
+        prospect_phone || null,
+        prospect_email || null,
+        prospect_address || 'Caracas, Venezuela',
+        0, 0, 'BCV', 1,
+        'RECIBO',
+        'Cliente / Prospecto generado desde Presupuesto Online',
+      );
+
+      client = db.prepare('SELECT * FROM clients WHERE id = ?').get(slugId) as any;
+      client_id = slugId;
+    }
+
     if (!client) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
     }
@@ -161,14 +214,33 @@ export async function POST(req: Request) {
     }
 
     // 5. Calculate sequential document number
-    const settingKey = doc_type === 'FORMA_LIBRE' ? 'last_forma_libre_number' : 'last_receipt_number';
+    let settingKey = 'last_receipt_number';
+    let defaultStart = 359;
+    if (doc_type === 'FORMA_LIBRE') {
+      settingKey = 'last_forma_libre_number';
+      defaultStart = 297;
+    } else if (doc_type === 'PRESUPUESTO') {
+      settingKey = 'last_presupuesto_number';
+      defaultStart = 100;
+    }
+
     const settingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(settingKey) as any;
-    let nextDocNum = (settingRow ? parseInt(settingRow.value, 10) : (doc_type === 'FORMA_LIBRE' ? 297 : 359)) + 1;
+    let nextDocNum = (settingRow ? parseInt(settingRow.value, 10) : defaultStart) + 1;
 
     // Save updated sequence
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(settingKey, nextDocNum.toString());
 
-    // 6. Save document
+    // 6. Fechas y Notas
+    const calculatedDueDate = doc_type === 'PRESUPUESTO'
+      ? (due_date || addBusinessDays(today, 3))
+      : (due_date || today);
+
+    let finalNotes = notes || '';
+    if (doc_type === 'PRESUPUESTO' && !finalNotes) {
+      finalNotes = '• Validez: Presupuesto válido por 3 días hábiles después de su generación.\n• Moneda: Expresado en USD ($), pagadero en Bolívares (Bs.) a la tasa oficial del BCV del día de la transacción.\n• Métodos de Pago: Transferencia Bancaria Mercantil, Pago Móvil, Binance USDT, Efectivo USD o Zelle.';
+    }
+
+    // 7. Save document
     const docId = `doc_${doc_type.toLowerCase()}_${nextDocNum}`;
     const insertDoc = db.prepare(`
       INSERT INTO documents (
@@ -184,13 +256,13 @@ export async function POST(req: Request) {
     `);
 
     insertDoc.run(
-      docId, doc_type, nextDocNum, client_id, client_rif || client.rif || null, today, due_date || today,
+      docId, doc_type, nextDocNum, client_id, client_rif || client.rif || null, today, calculatedDueDate,
       'EMITTED', is_paid ? 'PAID' : 'PENDING', currency, totalCurrency,
       rate_type_applied, appliedRate, bcvRate,
       subtotalBs, ivaRate, ivaAmountBs, totalBsApplied,
       applyWithholding ? 1 : 0, ivaRetentionPercent, ivaRetentionAmountBs,
       islrRetentionPercent, islrRetentionAmountBs, netPayableBs, netPayableUsd,
-      baseBsBcv, baseUsdBcv, JSON.stringify(items), notes || '',
+      baseBsBcv, baseUsdBcv, JSON.stringify(items), finalNotes,
       payment_method || null, payment_reference || null,
       is_paid ? new Date().toISOString() : null,
       user ? user.name : 'AI Assistant'
