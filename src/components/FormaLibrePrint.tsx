@@ -153,7 +153,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
         `}</style>
 
         <div
-          className="relative w-[216mm] min-h-[279mm] p-[15mm] text-[12px] font-sans"
+          className="relative w-[216mm] min-h-[279mm] pt-[50mm] px-[15mm] pb-[15mm] text-[12px] font-sans"
           style={{
             transform: `translate(${offsetX}mm, ${offsetY}mm)`,
             backgroundColor: showGuide ? '#fffdf7' : 'transparent',
@@ -162,13 +162,13 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
         >
           {/* Guía visual decorativa si está activada */}
           {showGuide && (
-            <div className="absolute inset-x-8 top-8 text-center text-red-400 text-[10px] font-mono border border-dashed border-red-300 p-1 mb-2">
-              [VISTA DE CALIBRACIÓN: ESTA GUÍA NO SE IMPRIMIRÁ EN EL PAPEL]
+            <div className="absolute inset-x-8 top-3 text-center text-red-500 text-[10px] font-mono border border-dashed border-red-300 p-1 mb-2">
+              [VISTA DE CALIBRACIÓN: MARGEN SUPERIOR DE 5 CM (50 MM) RESERVADO PARA MEMBRETE SENIAT]
             </div>
           )}
 
-          {/* Fila 1: Fecha de emisión (alineada a la derecha) */}
-          <div className="flex justify-end pt-4 pr-6 mb-2">
+          {/* Fila 1: Fecha de emisión (alineada a la derecha, a 5 cm del borde superior) */}
+          <div className="flex justify-end pr-6 mb-2">
             <div className="font-semibold text-right">
               <span className="text-gray-600 mr-2">Fecha De Emisión:</span>
               <span className="font-mono font-bold text-[13px]">{doc.issue_date}</span>
@@ -278,11 +278,6 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
                 <span className="font-sans">TOTAL A PAGAR (Bs.):</span>
                 <span>{formatBs(doc.total_bs_applied)}</span>
               </div>
-              {doc.currency === 'USD' && (
-                <div className="text-[10px] font-sans text-gray-500 pt-0.5">
-                  Ref: ${(doc.total_amount_currency || 0).toFixed(2)} USD a tasa {doc.rate_type_applied} ({doc.applied_rate} Bs/$)
-                </div>
-              )}
             </div>
           </div>
         </div>
