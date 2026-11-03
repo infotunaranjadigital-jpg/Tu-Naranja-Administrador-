@@ -62,6 +62,8 @@ export default function NewEmissionView({
   const [prospectPhone, setProspectPhone] = useState<string>('');
   const [prospectEmail, setProspectEmail] = useState<string>('');
   const [prospectAddress, setProspectAddress] = useState<string>('');
+  const [customDocNumber, setCustomDocNumber] = useState<string>('');
+  const [controlNumber, setControlNumber] = useState<string>('');
 
   const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -225,7 +227,9 @@ export default function NewEmissionView({
           islr_retention_percent: islrRetentionPercent,
           is_paid: docType === 'PRESUPUESTO' ? false : isPaid,
           payment_method: isPaid && docType !== 'PRESUPUESTO' ? paymentMethod : null,
-          payment_reference: isPaid && docType !== 'PRESUPUESTO' ? paymentReference : null
+          payment_reference: isPaid && docType !== 'PRESUPUESTO' ? paymentReference : null,
+          doc_number: customDocNumber ? parseInt(customDocNumber, 10) : undefined,
+          control_number: controlNumber.trim() || undefined
         })
       });
 
@@ -499,6 +503,37 @@ export default function NewEmissionView({
                   />
                 </div>
               </div>
+
+              {docType === 'FORMA_LIBRE' && (
+                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      N.º Factura (Impreso)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="300"
+                      value={customDocNumber}
+                      onChange={(e) => setCustomDocNumber(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-2.5 py-1.5 text-xs text-orange-400 font-mono font-bold outline-none"
+                    />
+                    <span className="text-[10px] text-slate-500">Por defecto: 300 o correlativo siguiente</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      N.º Control SENIAT (Pre-impreso)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. 00-000300"
+                      value={controlNumber}
+                      onChange={(e) => setControlNumber(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 font-mono outline-none"
+                    />
+                    <span className="text-[10px] text-slate-500">Opcional para registro contable</span>
+                  </div>
+                </div>
+              )}
 
               {docType === 'PRESUPUESTO' && (
                 <div className="mt-2 text-[11px] text-amber-400/90 flex items-center gap-1.5 font-medium">

@@ -56,6 +56,8 @@ export async function PATCH(
     const paymentReference = body.payment_reference ?? existing.payment_reference;
     const status = body.status ?? existing.status;
     const paidAt = paymentStatus === 'PAID' ? (existing.paid_at || new Date().toISOString()) : null;
+    const docNumber = body.doc_number !== undefined ? Number(body.doc_number) : existing.doc_number;
+    const controlNumber = body.control_number !== undefined ? body.control_number : existing.control_number;
 
     const stmt = db.prepare(`
       UPDATE documents SET
@@ -63,11 +65,23 @@ export async function PATCH(
         payment_method = ?,
         payment_reference = ?,
         status = ?,
-        paid_at = ?
+        paid_at = ?,
+        doc_number = ?,
+        control_number = ?
       WHERE id = ?
     `);
 
-    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, id);
+    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, docNumber, controlNumber, id);
+
+    // Si se actualizó el doc_number de una forma libre, sincronizar la secuencia para las siguientes facturas
+    if (body.doc_number && existing.doc_type === 'FORMA_LIBRE') {
+      const num = Number(body.doc_number);
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('last_forma_libre_number') as any;
+      const currentLast = row ? parseInt(row.value, 10) : 299;
+      if (num >= currentLast) {
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', num.toString());
+      }
+    }
 
     const updated = db.prepare('SELECT * FROM documents WHERE id = ?').get(id);
     return NextResponse.json({ success: true, document: updated });

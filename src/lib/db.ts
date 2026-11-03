@@ -286,4 +286,28 @@ function initSchema(db: DatabaseSync) {
   try {
     db.exec(`UPDATE clients SET base_monthly_fee = 250.0 WHERE id = 'dra-dama'`);
   } catch {}
+
+  // Soporte para número de control pre-impreso y arranque en 300
+  try {
+    db.exec(`ALTER TABLE documents ADD COLUMN control_number TEXT`);
+  } catch {}
+  try {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('last_forma_libre_number') as { value?: string } | undefined;
+    if (!row || !row.value || parseInt(String(row.value), 10) < 299) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', '299');
+    }
+  } catch {}
+  try {
+    db.exec(`
+      UPDATE documents 
+      SET doc_number = 300 
+      WHERE doc_type = 'FORMA_LIBRE' 
+        AND issue_date >= '2026-11-01' 
+        AND doc_number IN (298, 299);
+    `);
+    const maxDoc = db.prepare(`SELECT MAX(doc_number) as max_num FROM documents WHERE doc_type = 'FORMA_LIBRE'`).get() as { max_num?: number } | undefined;
+    if (maxDoc && maxDoc.max_num) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', String(maxDoc.max_num));
+    }
+  } catch {}
 }

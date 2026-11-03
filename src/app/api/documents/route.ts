@@ -95,7 +95,9 @@ export async function POST(req: Request) {
       prospect_business_name,
       prospect_phone,
       prospect_email,
-      prospect_address
+      prospect_address,
+      doc_number,
+      control_number
     } = data;
 
     if (!doc_type || (!client_id && !prospect_name) || !items || !items.length) {
@@ -218,14 +220,16 @@ export async function POST(req: Request) {
     let defaultStart = 359;
     if (doc_type === 'FORMA_LIBRE') {
       settingKey = 'last_forma_libre_number';
-      defaultStart = 297;
+      defaultStart = 299; // Arranca en 300
     } else if (doc_type === 'PRESUPUESTO') {
       settingKey = 'last_presupuesto_number';
       defaultStart = 100;
     }
 
     const settingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(settingKey) as any;
-    let nextDocNum = (settingRow ? parseInt(settingRow.value, 10) : defaultStart) + 1;
+    let nextDocNum = doc_number 
+      ? parseInt(doc_number, 10) 
+      : ((settingRow ? parseInt(settingRow.value, 10) : defaultStart) + 1);
 
     // Save updated sequence
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(settingKey, nextDocNum.toString());
@@ -251,8 +255,8 @@ export async function POST(req: Request) {
         is_withholding_applied, iva_retention_percent, iva_retention_amount_bs,
         islr_retention_percent, islr_retention_amount_bs, net_payable_bs, net_payable_usd,
         base_bs_bcv, base_usd_bcv, items_json, notes,
-        payment_method, payment_reference, paid_at, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        payment_method, payment_reference, paid_at, created_by, control_number
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insertDoc.run(
@@ -265,7 +269,8 @@ export async function POST(req: Request) {
       baseBsBcv, baseUsdBcv, JSON.stringify(items), finalNotes,
       payment_method || null, payment_reference || null,
       is_paid ? new Date().toISOString() : null,
-      user ? user.name : 'AI Assistant'
+      user ? user.name : 'AI Assistant',
+      control_number || null
     );
 
     const created = db.prepare(`
