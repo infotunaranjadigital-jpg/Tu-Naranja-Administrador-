@@ -320,11 +320,22 @@ function initSchema(db: DatabaseSync) {
     `);
   } catch {}
 
-  // Emisión y respaldo de Factura Nº 301 para Centro Cerámico García (Forma Libre a tasa Promedio)
+  // Emisión y respaldo oficial de Factura Nº 301 para Centro Cerámico García (Forma Libre a tasa Promedio)
   try {
-    const existing301 = db.prepare("SELECT id FROM documents WHERE doc_type = 'FORMA_LIBRE' AND doc_number = 301").get();
-    if (!existing301) {
-      const today = '2026-11-03';
+    // 1. Limpiar duplicados de prueba de Mantica del 3 de nov para que quede solo la factura Nº 300 oficial
+    db.exec(`
+      DELETE FROM documents 
+      WHERE doc_type = 'FORMA_LIBRE' 
+        AND client_id = 'mantica' 
+        AND issue_date = '2026-11-03' 
+        AND id IN ('doc_forma_libre_301', 'doc_forma_libre_300', 'doc_forma_libre_299');
+    `);
+
+    // 2. Comprobar si ya existe la 301 para cc-garcia
+    const existingGarcia301 = db.prepare("SELECT id FROM documents WHERE doc_type = 'FORMA_LIBRE' AND doc_number = 301 AND client_id = 'cc-garcia'").get();
+    if (!existingGarcia301) {
+      db.prepare("DELETE FROM documents WHERE doc_type = 'FORMA_LIBRE' AND doc_number = 301").run();
+
       const rateRow = db.prepare('SELECT * FROM exchange_rates ORDER BY date DESC LIMIT 1').get() as any;
       const bcvRate = Number(rateRow?.bcv_usd || 891.11);
       const avgRate = Number(rateRow?.average_usd || 946.31);
@@ -335,7 +346,7 @@ function initSchema(db: DatabaseSync) {
       const ivaBs = Number((subtotalBs * 0.16).toFixed(2));
       const totalBs = Number((subtotalBs + ivaBs).toFixed(2));
 
-      // Retenciones 75% IVA y 2% ISLR
+      // Retenciones SENIAT (75% IVA y 2% ISLR)
       const ivaRetBs = Number(((ivaBs * 75) / 100).toFixed(2));
       const islrRetBs = Number(((subtotalBs * 2) / 100).toFixed(2));
       const netPayableBs = Number((totalBs - ivaRetBs - islrRetBs).toFixed(2));
@@ -389,9 +400,9 @@ function initSchema(db: DatabaseSync) {
         ivaRetBs, islrRetBs, netPayableBs, netPayableUsd,
         baseBsBcv, baseUsdBcv, JSON.stringify(items)
       );
-
-      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', '301');
     }
+
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', '301');
   } catch (e) {
     console.warn('Error migration doc 301:', e);
   }
