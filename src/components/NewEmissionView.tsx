@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Trash2, Printer, FileText, CheckCircle2, 
-  HelpCircle, ArrowRight, DollarSign, Calculator, ChevronDown 
+  HelpCircle, ArrowRight, DollarSign, Calculator, ChevronDown, Save, RotateCcw 
 } from 'lucide-react';
 
 interface NewEmissionProps {
@@ -87,9 +87,125 @@ export default function NewEmissionView({
     { description: 'Manejo de Redes Sociales', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 150.0 }
   ]);
 
+  // Manejo de Borradores Automáticos en localStorage
+  const [isDraftRestored, setIsDraftRestored] = useState<boolean>(false);
+  const [hasDraftInStorage, setHasDraftInStorage] = useState<boolean>(false);
+  const previousClientIdRef = React.useRef<string>('');
+
+  // 1. Restaurar borrador previo al montar el componente
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('tu_naranja_new_emission_draft_v1');
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.selectedClientId) setSelectedClientId(draft.selectedClientId);
+        if (draft.docType) setDocType(draft.docType);
+        if (draft.isProspectMode !== undefined) setIsProspectMode(draft.isProspectMode);
+        if (draft.prospectName !== undefined) setProspectName(draft.prospectName);
+        if (draft.prospectRif !== undefined) setProspectRif(draft.prospectRif);
+        if (draft.prospectPhone !== undefined) setProspectPhone(draft.prospectPhone);
+        if (draft.prospectEmail !== undefined) setProspectEmail(draft.prospectEmail);
+        if (draft.prospectAddress !== undefined) setProspectAddress(draft.prospectAddress);
+        if (draft.customDocNumber !== undefined) setCustomDocNumber(draft.customDocNumber);
+        if (draft.controlNumber !== undefined) setControlNumber(draft.controlNumber);
+        if (draft.issueDate) setIssueDate(draft.issueDate);
+        if (draft.dueDate) setDueDate(draft.dueDate);
+        if (draft.currency) setCurrency(draft.currency);
+        if (draft.rateType) setRateType(draft.rateType);
+        if (draft.customRate !== undefined) setCustomRate(draft.customRate);
+        if (draft.notes !== undefined) setNotes(draft.notes);
+        if (draft.isPaid !== undefined) setIsPaid(draft.isPaid);
+        if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+        if (draft.paymentReference !== undefined) setPaymentReference(draft.paymentReference);
+        if (draft.applyWithholding !== undefined) setApplyWithholding(draft.applyWithholding);
+        if (draft.ivaRetentionPercent !== undefined) setIvaRetentionPercent(draft.ivaRetentionPercent);
+        if (draft.islrRetentionPercent !== undefined) setIslrRetentionPercent(draft.islrRetentionPercent);
+        if (draft.items && draft.items.length) setItems(draft.items);
+        if (draft.selectedRif) setSelectedRif(draft.selectedRif);
+        setHasDraftInStorage(true);
+        previousClientIdRef.current = draft.selectedClientId || '';
+      } else {
+        previousClientIdRef.current = initialClient?.id || (clients[0]?.id || '');
+      }
+    } catch {
+      previousClientIdRef.current = initialClient?.id || (clients[0]?.id || '');
+    }
+    setIsDraftRestored(true);
+  }, []);
+
+  // 2. Guardar borrador automáticamente al modificar cualquier campo
+  useEffect(() => {
+    if (!isDraftRestored) return;
+    const draft = {
+      selectedClientId,
+      docType,
+      isProspectMode,
+      prospectName,
+      prospectRif,
+      prospectPhone,
+      prospectEmail,
+      prospectAddress,
+      customDocNumber,
+      controlNumber,
+      issueDate,
+      dueDate,
+      currency,
+      rateType,
+      customRate,
+      notes,
+      isPaid,
+      paymentMethod,
+      paymentReference,
+      applyWithholding,
+      ivaRetentionPercent,
+      islrRetentionPercent,
+      items,
+      selectedRif,
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem('tu_naranja_new_emission_draft_v1', JSON.stringify(draft));
+      setHasDraftInStorage(true);
+    } catch {}
+  }, [
+    isDraftRestored,
+    selectedClientId, docType, isProspectMode, prospectName, prospectRif, prospectPhone, prospectEmail, prospectAddress,
+    customDocNumber, controlNumber, issueDate, dueDate, currency, rateType, customRate, notes,
+    isPaid, paymentMethod, paymentReference, applyWithholding, ivaRetentionPercent, islrRetentionPercent, items, selectedRif
+  ]);
+
+  // Limpiar / descartar borrador
+  const handleClearDraft = () => {
+    try {
+      localStorage.removeItem('tu_naranja_new_emission_draft_v1');
+    } catch {}
+    setHasDraftInStorage(false);
+    const client = clients.find(c => c.id === selectedClientId) || clients[0];
+    if (client) {
+      setDocType(client.preferred_document === 'FORMA_LIBRE' ? 'FORMA_LIBRE' : 'RECIBO');
+      setRateType(client.default_rate_type || 'BCV');
+      setItems([{
+        description: `Manejo de Redes Sociales (${new Date().toLocaleString('es-VE', { month: 'long' })})`,
+        category: 'MARKETING_RRSS',
+        unit: '1.0',
+        quantity: 1,
+        amount: client.base_monthly_fee || 150
+      }]);
+      setNotes('');
+      setCustomDocNumber('');
+      setControlNumber('');
+      setIsProspectMode(false);
+      setProspectName('');
+    }
+  };
+
   // When selected client changes, update defaults
   useEffect(() => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || !isDraftRestored) return;
+    // Si no cambió el cliente respecto al borrador, no sobreescribir lo que el usuario tenía guardado
+    if (previousClientIdRef.current === selectedClientId) return;
+    previousClientIdRef.current = selectedClientId;
+
     const client = clients.find(c => c.id === selectedClientId);
     if (client) {
       setDocType(client.preferred_document === 'FORMA_LIBRE' ? 'FORMA_LIBRE' : 'RECIBO');
@@ -236,6 +352,12 @@ export default function NewEmissionView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al emitir');
 
+      // Limpiar borrador tras emitir exitosamente
+      try {
+        localStorage.removeItem('tu_naranja_new_emission_draft_v1');
+        setHasDraftInStorage(false);
+      } catch {}
+
       onEmissionSuccess(data.document);
     } catch (err: any) {
       alert(err.message);
@@ -258,6 +380,29 @@ export default function NewEmissionView({
           Elige cliente, modalidad (Forma Libre o Recibo) y define con qué tasa liquidar.
         </p>
       </div>
+
+      {/* Auto-Draft Notification Banner */}
+      {hasDraftInStorage && (
+        <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-xs text-emerald-300 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span>
+              <strong>Borrador automático activo:</strong> Si sales de la página o cambias de pestaña, tus datos se guardan en tiempo real y no se pierden.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearDraft}
+            className="text-xs text-slate-400 hover:text-rose-400 underline font-medium transition flex items-center gap-1 ml-auto"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Descartar borrador / Limpiar</span>
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Banner especial cuando es Presupuesto */}
@@ -835,8 +980,20 @@ export default function NewEmissionView({
           </div>
         )}
 
-        {/* Submit */}
-        <div className="flex justify-end gap-3">
+        {/* Submit & Draft Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              alert('✅ Borrador guardado exitosamente en tu navegador. Tus datos permanecerán aquí aunque salgas o recargues la página.');
+            }}
+            className="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-xl transition flex items-center gap-2 border border-slate-800 shadow"
+            title="Guardar borrador para continuar luego"
+          >
+            <Save className="w-4 h-4 text-emerald-400" />
+            <span>Guardar Borrador</span>
+          </button>
+
           <button
             type="submit"
             disabled={submitting}

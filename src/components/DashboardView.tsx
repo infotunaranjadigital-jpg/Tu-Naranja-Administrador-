@@ -45,9 +45,10 @@ export default function DashboardView({
     'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
   ];
 
-  // Cálculo de proximidad cronológica a vencer
+  // Cálculo de proximidad cronológica a vencer (solo clientes con cobro mensual recurrente activo)
   const sortedClients = useMemo(() => {
-    const list = clients.map((c) => {
+    const recurringClients = clients.filter(c => c.active && Number(c.base_monthly_fee) > 0);
+    const list = recurringClients.map((c) => {
       const bDay = Number(c.billing_day) || 1;
       let daysRemaining = 0;
       let nextMonthIdx = currentMonth;

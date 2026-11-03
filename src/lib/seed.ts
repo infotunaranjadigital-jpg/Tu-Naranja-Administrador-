@@ -81,12 +81,12 @@ export function seedDatabase() {
         email: "feminaid2021@gmail.com",
         address: "Av. Rio Manapire, Edif Centro Clinico de Maternidad Leopoldo Aguerrevere",
         default_currency: "USD",
-        base_monthly_fee: 320.0,
+        base_monthly_fee: 0.0,
         meta_ads_budget: 0.0,
         default_rate_type: "BCV",
-        billing_day: 14,
+        billing_day: 1,
         preferred_document: "FORMA_LIBRE",
-        notes: "Rotulados e impresiones especiales."
+        notes: "Cliente para trabajos puntuales (rotulados e impresiones especiales). No tiene mensualidad fija de redes sociales."
       },
       {
         id: "cc-garcia",
@@ -689,8 +689,8 @@ export function syncCanonicalClients() {
       name: 'Servicios Feminaid 2021 CA',
       rif: 'J-50125683-7', 
       business_name: 'Servicios Feminaid 2021 CA', 
-      base_monthly_fee: 320.0,
-      notes: 'Rotulados e impresiones especiales.'
+      base_monthly_fee: 0.0,
+      notes: 'Cliente para trabajos puntuales (rotulados e impresiones especiales). No tiene mensualidad fija de redes sociales.'
     }
   };
 
