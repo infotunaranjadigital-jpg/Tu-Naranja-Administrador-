@@ -253,37 +253,40 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
 
           {/* Fila 5: Tabla de Ítems */}
           <div className="min-h-[110mm]">
-            <table className="w-full text-left border-collapse text-[11px]">
+            <table className="w-full text-left border-collapse text-[11px] table-fixed">
               <thead>
                 <tr className="border-b-2 border-black/80 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-2 w-7/12">Descripción</th>
-                  <th className="py-2 text-center w-1/12">Unidad</th>
-                  <th className="py-2 text-center w-1/12">Cant.</th>
-                  <th className="py-2 text-right w-1.5/12">Precio Unitario</th>
-                  <th className="py-2 text-right w-1.5/12">Importe Bs.</th>
+                  <th className="py-2.5 pr-2 w-[42%]">Descripción</th>
+                  <th className="py-2.5 px-2 text-center w-[12%]">Unidad</th>
+                  <th className="py-2.5 px-2 text-center w-[8%]">Cant.</th>
+                  <th className="py-2.5 px-3 text-right w-[19%]">Precio Unitario</th>
+                  <th className="py-2.5 pl-3 text-right w-[19%]">Importe Bs.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {items.map((item: any, idx: number) => {
-                  const qty = Number(item.quantity) || 1;
-                  const unitPriceBs = Number(item.unitPrice) || (doc.currency === 'USD' ? (Number(item.amount) * doc.applied_rate) : Number(item.amount));
-                  const amountBs = Number(item.amount) ? (doc.currency === 'USD' ? (Number(item.amount) * doc.applied_rate) : Number(item.amount)) : (qty * unitPriceBs);
+                  const qty = Math.max(1, Number(item.quantity) || 1);
+                  const totalItemAmount = Number(item.amount) || (Number(item.unitPrice) * qty) || 0;
+                  const amountBs = doc.currency === 'USD' ? (totalItemAmount * doc.applied_rate) : totalItemAmount;
+                  const unitPriceBs = Number(item.unitPrice)
+                    ? (doc.currency === 'USD' ? Number(item.unitPrice) * doc.applied_rate : Number(item.unitPrice))
+                    : (amountBs / qty);
 
                   return (
                     <tr key={idx} className="align-top">
                       <td className="py-2 pr-2 font-medium">
                         {item.description}
                       </td>
-                      <td className="py-2 text-center font-mono">
+                      <td className="py-2 px-2 text-center font-mono">
                         {item.unit || '1.0'}
                       </td>
-                      <td className="py-2 text-center font-mono">
+                      <td className="py-2 px-2 text-center font-mono">
                         {qty}
                       </td>
-                      <td className="py-2 text-right font-mono">
+                      <td className="py-2 px-3 text-right font-mono whitespace-nowrap">
                         {formatBs(unitPriceBs)}
                       </td>
-                      <td className="py-2 text-right font-mono font-semibold">
+                      <td className="py-2 pl-3 text-right font-mono font-semibold whitespace-nowrap">
                         {formatBs(amountBs)}
                       </td>
                     </tr>
