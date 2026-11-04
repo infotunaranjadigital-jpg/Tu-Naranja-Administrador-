@@ -178,11 +178,13 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
       <div className="max-w-[216mm] mx-auto bg-white text-black shadow-2xl rounded-sm print:shadow-none print:m-0 print:p-0 relative overflow-hidden">
         <style jsx global>{`
           @media print {
-            body {
+            html, body {
               background: white !important;
               color: black !important;
               margin: 0 !important;
               padding: 0 !important;
+              height: 279mm !important;
+              overflow: hidden !important;
             }
             .print\\:hidden {
               display: none !important;
@@ -195,7 +197,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
         `}</style>
 
         <div
-          className="relative w-[216mm] min-h-[279mm] pt-[50mm] px-[15mm] pb-[15mm] text-[12px] font-sans"
+          className="relative w-[216mm] h-[279mm] max-h-[279mm] box-border pt-[50mm] px-[15mm] pb-[10mm] text-[12px] font-sans overflow-hidden"
           style={{
             transform: `translate(${offsetX}mm, ${offsetY}mm)`,
             backgroundColor: showGuide ? '#fffdf7' : 'transparent',
@@ -252,7 +254,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
           </div>
 
           {/* Fila 5: Tabla de Ítems */}
-          <div className="min-h-[110mm]">
+          <div className="min-h-[90mm]">
             <table className="w-full text-left border-collapse text-[11px] table-fixed">
               <thead>
                 <tr className="border-b-2 border-black/80 font-bold uppercase tracking-wider text-[10px]">
