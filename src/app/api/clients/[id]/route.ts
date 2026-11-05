@@ -108,3 +108,53 @@ export async function PUT(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const apiKey = req.headers.get('x-api-key');
+  const user = await getCurrentUser();
+
+  if (!validateApiKey(apiKey) && !user) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+    const data = await req.json();
+    const db = getDb();
+
+    const existing = db.prepare('SELECT * FROM clients WHERE id = ?').get(id) as any;
+    if (!existing) {
+      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (data.active !== undefined) {
+      updates.push('active = ?');
+      values.push(data.active ? 1 : 0);
+    }
+    if (data.notes !== undefined) {
+      updates.push('notes = ?');
+      values.push(data.notes);
+    }
+    if (data.base_monthly_fee !== undefined) {
+      updates.push('base_monthly_fee = ?');
+      values.push(Number(data.base_monthly_fee));
+    }
+
+    if (updates.length > 0) {
+      updates.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(id);
+      db.prepare(`UPDATE clients SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    }
+
+    const updated = db.prepare('SELECT * FROM clients WHERE id = ?').get(id);
+    return NextResponse.json({ success: true, client: updated });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

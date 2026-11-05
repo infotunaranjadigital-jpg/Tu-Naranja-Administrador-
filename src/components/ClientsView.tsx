@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
   Users, Search, Plus, Edit, History, 
   ArrowUpRight, DollarSign, Calendar, FileText, Check, X,
-  Filter, ArrowUpDown, Sparkles
+  Filter, ArrowUpDown, Sparkles, UserX, CheckCircle, PauseCircle
 } from 'lucide-react';
 
 interface ClientsViewProps {
@@ -18,6 +18,7 @@ export default function ClientsView({
   onEmitForClient,
   onRefreshClients
 }: ClientsViewProps) {
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE' | 'ALL'>('ACTIVE');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'fee_desc' | 'fee_asc' | 'name_asc' | 'name_desc' | 'billing_day'>(() => {
     if (typeof window !== 'undefined') {
@@ -35,6 +36,9 @@ export default function ClientsView({
       localStorage.setItem('clients_sort_by', newSort);
     }
   };
+
+  const activeCount = clients.filter(c => c.active !== 0).length;
+  const inactiveCount = clients.filter(c => c.active === 0).length;
 
   const [selectedClientForHistory, setSelectedClientForHistory] = useState<any>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -64,11 +68,40 @@ export default function ClientsView({
     notes: '',
     is_withholding_agent: false,
     iva_retention_percent: '75',
-    islr_retention_percent: '2'
+    islr_retention_percent: '2',
+    active: true
   });
+
+  const handleToggleActive = async (client: any, newStatus: number) => {
+    const actionText = newStatus === 1 ? 'reactivar' : 'inactivar temporalmente';
+    const confirmMessage = newStatus === 1
+      ? `¿Deseas reactivar al cliente "${client.name}"?\nVolverá a aparecer en el directorio de clientes activos y en el cronograma de cobro mensual.`
+      : `¿Deseas inactivar temporalmente a "${client.name}"?\nSaldrá del filtro principal de clientes activos y de la cartelera de cobro mensual. Podrás reactivarlo en cualquier momento desde la pestaña "Inactivos".`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: newStatus })
+      });
+      if (res.ok) {
+        onRefreshClients();
+      } else {
+        alert('Error al actualizar el estado del cliente');
+      }
+    } catch {
+      alert('Error de conexión');
+    }
+  };
 
   const filteredClients = clients
     .filter(c => {
+      // Filtro de Estado (Activos / Inactivos / Todos)
+      if (statusFilter === 'ACTIVE' && c.active === 0) return false;
+      if (statusFilter === 'INACTIVE' && c.active !== 0) return false;
+
       const term = searchTerm.toLowerCase();
       const matchesSearch = 
         c.name.toLowerCase().includes(term) ||
@@ -169,7 +202,8 @@ export default function ClientsView({
         notes: clientToEdit.notes || '',
         is_withholding_agent: Boolean(clientToEdit.is_withholding_agent === 1 || clientToEdit.id === 'mantica' || clientToEdit.id === 'cc-garcia'),
         iva_retention_percent: clientToEdit.iva_retention_percent?.toString() || '75',
-        islr_retention_percent: clientToEdit.islr_retention_percent?.toString() || '2'
+        islr_retention_percent: clientToEdit.islr_retention_percent?.toString() || '2',
+        active: clientToEdit.active !== 0
       });
     } else {
       setEditingClient(null);
@@ -188,7 +222,8 @@ export default function ClientsView({
         notes: '',
         is_withholding_agent: false,
         iva_retention_percent: '75',
-        islr_retention_percent: '2'
+        islr_retention_percent: '2',
+        active: true
       });
     }
     setClientModalOpen(true);
@@ -210,7 +245,8 @@ export default function ClientsView({
           billing_day: parseInt(formData.billing_day, 10) || 1,
           is_withholding_agent: formData.is_withholding_agent ? 1 : 0,
           iva_retention_percent: parseFloat(formData.iva_retention_percent) || 75,
-          islr_retention_percent: parseFloat(formData.islr_retention_percent) || 2
+          islr_retention_percent: parseFloat(formData.islr_retention_percent) || 2,
+          active: formData.active ? 1 : 0
         })
       });
 
@@ -245,6 +281,44 @@ export default function ClientsView({
         >
           <Plus className="w-4 h-4" />
           Nuevo Cliente
+        </button>
+      </div>
+
+      {/* Selector de Estado: Activos / Inactivos / Todos */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <button
+          onClick={() => setStatusFilter('ACTIVE')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            statusFilter === 'ACTIVE'
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Clientes Activos ({activeCount})
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('INACTIVE')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            statusFilter === 'INACTIVE'
+              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm shadow-rose-500/10'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <PauseCircle className="w-3.5 h-3.5 text-rose-400" />
+          Clientes Inactivos ({inactiveCount})
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('ALL')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            statusFilter === 'ALL'
+              ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-sm shadow-orange-500/10'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          Todos ({clients.length})
         </button>
       </div>
 
@@ -330,9 +404,10 @@ export default function ClientsView({
             <option value="billing_day">📅 Día de Corte (1 al 31)</option>
           </select>
 
-          {(rateFilter !== 'ALL' || categoryFilter !== 'ALL' || docFilter !== 'ALL' || searchTerm !== '' || sortBy !== 'fee_desc') && (
+          {(rateFilter !== 'ALL' || categoryFilter !== 'ALL' || docFilter !== 'ALL' || searchTerm !== '' || sortBy !== 'fee_desc' || statusFilter !== 'ACTIVE') && (
             <button
               onClick={() => {
+                setStatusFilter('ACTIVE');
                 setSearchTerm('');
                 setRateFilter('ALL');
                 setCategoryFilter('ALL');
@@ -340,7 +415,7 @@ export default function ClientsView({
                 handleSortChange('fee_desc');
               }}
               className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition"
-              title="Restablecer filtros y volver a mayor tarifa"
+              title="Restablecer filtros y volver a clientes activos por mayor tarifa"
             >
               Restablecer
             </button>
@@ -349,32 +424,54 @@ export default function ClientsView({
       </div>
 
       {/* Clients Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredClients.map((client) => (
-          <div
-            key={client.id}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition flex flex-col justify-between shadow-lg relative group"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <h3 className="font-bold text-slate-100 text-sm leading-snug">
-                    {client.name}
-                  </h3>
-                  {client.business_name && client.business_name !== client.name && (
-                    <p className="text-xs text-slate-400 font-medium">
-                      {client.business_name}
-                    </p>
-                  )}
+      {filteredClients.length === 0 ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
+          <p className="text-sm font-semibold">No se encontraron clientes con los filtros aplicados.</p>
+          {statusFilter === 'INACTIVE' ? (
+            <p className="text-xs text-slate-500 mt-1">Actualmente no hay clientes marcados como inactivos.</p>
+          ) : (
+            <p className="text-xs text-slate-500 mt-1">Intenta cambiar los términos de búsqueda o filtros.</p>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredClients.map((client) => (
+            <div
+              key={client.id}
+              className={`rounded-2xl p-5 transition flex flex-col justify-between shadow-lg relative group ${
+                client.active === 0
+                  ? 'bg-slate-900/60 border border-dashed border-slate-800 opacity-80 hover:opacity-100'
+                  : 'bg-slate-900 border border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-100 text-sm leading-snug">
+                        {client.name}
+                      </h3>
+                      {client.active === 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                          <PauseCircle className="w-3 h-3 text-rose-400" />
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
+                    {client.business_name && client.business_name !== client.name && (
+                      <p className="text-xs text-slate-400 font-medium">
+                        {client.business_name}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    client.preferred_document === 'FORMA_LIBRE'
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                  }`}>
+                    {client.preferred_document === 'FORMA_LIBRE' ? 'Forma Libre' : 'Recibo'}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  client.preferred_document === 'FORMA_LIBRE'
-                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                    : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                }`}>
-                  {client.preferred_document === 'FORMA_LIBRE' ? 'Forma Libre' : 'Recibo'}
-                </span>
-              </div>
 
               {/* Insignia de Agente de Retención SENIAT */}
               {(client.is_withholding_agent === 1 || client.id === 'mantica' || client.id === 'cc-garcia') && (
@@ -495,7 +592,7 @@ export default function ClientsView({
                 title="Ajustar tarifa y registrar motivo"
               >
                 <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                Ajustar Tarifa
+                <span className="hidden sm:inline">Tarifa</span>
               </button>
 
               <button
@@ -514,6 +611,26 @@ export default function ClientsView({
                 <Edit className="w-3.5 h-3.5" />
               </button>
 
+              {/* Botón Inactivar / Reactivar */}
+              {client.active === 0 ? (
+                <button
+                  onClick={() => handleToggleActive(client, 1)}
+                  className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 font-bold rounded-lg flex items-center gap-1 transition text-xs"
+                  title="Reactivar cliente en el directorio y cobro mensual"
+                >
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  Reactivar
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleToggleActive(client, 0)}
+                  className="p-2 bg-slate-800 hover:bg-rose-950/40 hover:text-rose-300 text-slate-400 rounded-lg transition"
+                  title="Inactivar cliente temporalmente"
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                </button>
+              )}
+
               <button
                 onClick={() => onEmitForClient(client)}
                 className="ml-auto px-3 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg flex items-center gap-1 transition shadow shadow-orange-600/30"
@@ -525,6 +642,7 @@ export default function ClientsView({
           </div>
         ))}
       </div>
+      )}
 
       {/* Modal Ajustar Tarifa */}
       {feeModalClient && (
@@ -789,6 +907,31 @@ export default function ClientsView({
                       <span>📄 Recibo Digital</span>
                     </label>
                   </div>
+                </div>
+
+                {/* Estado del Cliente: Activo / Inactivo */}
+                <div className="col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-slate-200 flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.active}
+                        onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                        className="w-4 h-4 rounded text-orange-600 focus:ring-0 bg-slate-900 border-slate-700"
+                      />
+                      <span>{formData.active ? '🟢 Cliente Activo' : '⚪ Cliente Inactivo Temporalmente'}</span>
+                    </label>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {formData.active 
+                        ? 'El cliente aparece en la cartelera de cobro mensual y en el directorio principal.'
+                        : 'El cliente está pausado temporalmente: no saldrá en los cobros mensuales ni en el filtro principal.'}
+                    </p>
+                  </div>
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                    formData.active ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  }`}>
+                    {formData.active ? 'Activo' : 'Inactivo'}
+                  </span>
                 </div>
 
                 {/* Agente de Retención SENIAT */}

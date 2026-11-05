@@ -465,7 +465,7 @@ export default function NewEmissionView({
                   >
                     {clients.map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.name} {c.rif ? `(${c.rif})` : ''} — Fee: ${c.base_monthly_fee}
+                        {c.name} {c.active === 0 ? '(Inactivo)' : ''} {c.rif ? `(${c.rif})` : ''} — Fee: ${c.base_monthly_fee}
                       </option>
                     ))}
                   </select>

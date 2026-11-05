@@ -443,4 +443,11 @@ function initSchema(db: DatabaseSync) {
   } catch (e) {
     console.warn('Error migration November Forma Libre:', e);
   }
+
+  // Inactivar Arinita (Arianita Variedades) temporalmente
+  try {
+    db.exec(`UPDATE clients SET active = 0 WHERE id = 'arinita';`);
+  } catch (e) {
+    console.warn('Error inactivating arinita:', e);
+  }
 }

@@ -47,7 +47,7 @@ export default function DashboardView({
 
   // Cálculo de proximidad cronológica a vencer (solo clientes con cobro mensual recurrente activo)
   const sortedClients = useMemo(() => {
-    const recurringClients = clients.filter(c => c.active && Number(c.base_monthly_fee) > 0);
+    const recurringClients = clients.filter(c => c.active !== 0 && c.active !== false && Boolean(c.active) && Number(c.base_monthly_fee) > 0);
     const list = recurringClients.map((c) => {
       const bDay = Number(c.billing_day) || 1;
       let daysRemaining = 0;
@@ -270,7 +270,7 @@ export default function DashboardView({
                     : 'bg-slate-950 text-slate-400 hover:text-slate-300 border border-slate-850'
                 }`}
               >
-                Todos ({clients.length})
+                Todos ({sortedClients.length})
               </button>
               <button
                 onClick={() => setFilterType('NEXT_7_DAYS')}
