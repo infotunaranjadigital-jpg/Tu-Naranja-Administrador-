@@ -235,12 +235,20 @@ export async function POST(req: Request) {
     }
 
     const settingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get(settingKey) as any;
+    const maxDocRow = db.prepare('SELECT MAX(doc_number) as max_num FROM documents WHERE doc_type = ?').get(doc_type) as any;
+    
+    const highestExisting = Math.max(
+      settingRow?.value ? parseInt(settingRow.value, 10) : defaultStart,
+      maxDocRow?.max_num ? parseInt(maxDocRow.max_num, 10) : defaultStart
+    );
+
     let nextDocNum = doc_number 
       ? parseInt(doc_number, 10) 
-      : ((settingRow ? parseInt(settingRow.value, 10) : defaultStart) + 1);
+      : (highestExisting + 1);
 
-    // Save updated sequence
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(settingKey, nextDocNum.toString());
+    // Save updated sequence (siempre avanzando al número más alto)
+    const newMaxSetting = Math.max(highestExisting, nextDocNum);
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(settingKey, newMaxSetting.toString());
 
     // 6. Fechas y Notas
     const calculatedDueDate = doc_type === 'PRESUPUESTO'

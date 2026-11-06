@@ -269,10 +269,14 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
                 {items.map((item: any, idx: number) => {
                   const qty = Math.max(1, Number(item.quantity) || 1);
                   const totalItemAmount = Number(item.amount) || (Number(item.unitPrice) * qty) || 0;
-                  const amountBs = doc.currency === 'USD' ? (totalItemAmount * doc.applied_rate) : totalItemAmount;
-                  const unitPriceBs = Number(item.unitPrice)
-                    ? (doc.currency === 'USD' ? Number(item.unitPrice) * doc.applied_rate : Number(item.unitPrice))
-                    : (amountBs / qty);
+                  const amountBs = item.amount_bs !== undefined
+                    ? Number(item.amount_bs)
+                    : (doc.currency === 'USD' ? (totalItemAmount * doc.applied_rate) : totalItemAmount);
+                  const unitPriceBs = item.unit_price_bs !== undefined
+                    ? Number(item.unit_price_bs)
+                    : (Number(item.unitPrice)
+                      ? (doc.currency === 'USD' ? Number(item.unitPrice) * doc.applied_rate : Number(item.unitPrice))
+                      : (amountBs / qty));
 
                   return (
                     <tr key={idx} className="align-top">

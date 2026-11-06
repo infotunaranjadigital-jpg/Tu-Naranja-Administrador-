@@ -29,7 +29,7 @@ export default function AccountsReceivablePayableModal({
   if (!isOpen) return null;
 
   const pendingDocs = documents.filter(d => d.payment_status === 'PENDING');
-  const totalPendingUsd = pendingDocs.reduce((acc, d) => acc + (d.total_amount_currency || 0), 0);
+  const totalPendingUsd = pendingDocs.reduce((acc, d) => acc + (d.currency === 'VES' ? (Number(d.base_usd_bcv) || (Number(d.total_bs_applied) / bcvRate) || 0) : (d.total_amount_currency || 0)), 0);
   const totalPendingBs = pendingDocs.reduce((acc, d) => acc + (d.total_bs_applied || (d.total_amount_currency * bcvRate) || 0), 0);
 
   const formatBs = (n: number) => (n || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -56,7 +56,9 @@ export default function AccountsReceivablePayableModal({
   const handleSendReminder = (doc: any) => {
     const client = clients.find(c => c.id === doc.client_id) || {};
     const phoneClean = (client.phone || doc.client_phone || '').replace(/[^0-9]/g, '');
-    const msg = `Hola ${doc.client_name}, te saludamos de Tu Naranja Digital. Te recordamos cordialmente que el pago de la ${doc.doc_type === 'FORMA_LIBRE' ? 'Factura Fiscal' : 'mensualidad'} #${doc.doc_number} por $${doc.total_amount_currency} USD (Bs. ${formatBs(doc.total_bs_applied || doc.total_amount_currency * bcvRate)}) se encuentra pendiente.\n\nBanco Mercantil - Cta Corriente: 0105-0638-70-163832743-2\n¡Muchas gracias!`;
+    const msg = doc.currency === 'VES'
+      ? `Hola ${doc.client_name}, te saludamos de Tu Naranja Digital. Te recordamos cordialmente que el pago de la ${doc.doc_type === 'FORMA_LIBRE' ? 'Factura Fiscal' : 'mensualidad'} #${doc.doc_number} por Bs. ${formatBs(doc.total_bs_applied)} (Ref: $${(Number(doc.base_usd_bcv) || (Number(doc.total_bs_applied) / bcvRate)).toFixed(2)} USD) se encuentra pendiente.\n\nBanco Mercantil - Cta Corriente: 0105-0638-70-163832743-2\n¡Muchas gracias!`
+      : `Hola ${doc.client_name}, te saludamos de Tu Naranja Digital. Te recordamos cordialmente que el pago de la ${doc.doc_type === 'FORMA_LIBRE' ? 'Factura Fiscal' : 'mensualidad'} #${doc.doc_number} por $${doc.total_amount_currency} USD (Bs. ${formatBs(doc.total_bs_applied || doc.total_amount_currency * bcvRate)}) se encuentra pendiente.\n\nBanco Mercantil - Cta Corriente: 0105-0638-70-163832743-2\n¡Muchas gracias!`;
 
     navigator.clipboard.writeText(msg);
     if (phoneClean) {
@@ -200,7 +202,10 @@ export default function AccountsReceivablePayableModal({
                         <div className="flex items-center gap-3 self-end sm:self-auto">
                           <div className="text-right">
                             <div className="font-mono font-black text-amber-400 text-base leading-none">
-                              ${d.total_amount_currency} <span className="text-[10px] font-sans font-normal text-slate-400">USD</span>
+                              {d.currency === 'VES'
+                                ? `$${(Number(d.base_usd_bcv) || (Number(d.total_bs_applied) / bcvRate)).toFixed(2)}`
+                                : `$${d.total_amount_currency}`
+                              } <span className="text-[10px] font-sans font-normal text-slate-400">USD</span>
                             </div>
                             <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                               Bs. {formatBs(d.total_bs_applied || d.total_amount_currency * bcvRate)}

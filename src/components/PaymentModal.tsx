@@ -25,7 +25,9 @@ export default function PaymentModal({
 
   if (!isOpen || !doc) return null;
 
-  const totalUsd = Number(doc.total_amount_currency) || 0;
+  const totalUsd = doc.currency === 'VES'
+    ? Number(doc.base_usd_bcv || (Number(doc.total_bs_applied) / (Number(doc.applied_rate) || bcvRate || 1)))
+    : (Number(doc.total_amount_currency) || 0);
   const totalBs = Number(doc.total_bs_applied) || (totalUsd * bcvRate);
   const formatBs = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -95,7 +97,7 @@ export default function PaymentModal({
               <div>
                 <span className="text-[10px] text-slate-500 uppercase font-semibold">Total a Cobrar</span>
                 <div className="text-xl font-black text-emerald-400 font-mono">
-                  ${totalUsd.toFixed(2)} <span className="text-xs font-sans text-slate-400 font-normal">USD</span>
+                  ${totalUsd.toFixed(2)} <span className="text-xs font-sans text-slate-400 font-normal">{doc.currency === 'VES' ? 'USD (Ref)' : 'USD'}</span>
                 </div>
               </div>
               <div className="text-right">

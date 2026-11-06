@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, Trash2, Printer, FileText, CheckCircle2, 
   HelpCircle, ArrowRight, DollarSign, Calculator, ChevronDown, Save, RotateCcw 
@@ -9,6 +9,7 @@ import {
 interface NewEmissionProps {
   clients: any[];
   rates: any;
+  documents?: any[];
   initialClient?: any;
   onEmissionSuccess: (createdDoc: any) => void;
 }
@@ -51,11 +52,21 @@ function addBusinessDays(startDateStr: string, businessDays: number = 3): string
 export default function NewEmissionView({
   clients,
   rates,
+  documents = [],
   initialClient,
   onEmissionSuccess
 }: NewEmissionProps) {
   const [selectedClientId, setSelectedClientId] = useState<string>(initialClient?.id || (clients[0]?.id || ''));
   const [docType, setDocType] = useState<'FORMA_LIBRE' | 'RECIBO' | 'PRESUPUESTO'>('RECIBO');
+
+  // Próximo correlativo automático detectado desde los documentos existentes
+  const nextSuggestedNumber = useMemo(() => {
+    const filtered = (documents || []).filter((d: any) => d.doc_type === docType);
+    const maxNum = filtered.reduce((max: number, d: any) => Math.max(max, Number(d.doc_number) || 0), 0);
+    if (docType === 'FORMA_LIBRE') return Math.max(maxNum, 299) + 1;
+    if (docType === 'RECIBO') return Math.max(maxNum, 358) + 1;
+    return Math.max(maxNum, 100) + 1;
+  }, [documents, docType]);
   const [isProspectMode, setIsProspectMode] = useState<boolean>(false);
   const [prospectName, setProspectName] = useState<string>('');
   const [prospectRif, setProspectRif] = useState<string>('');
@@ -672,17 +683,27 @@ export default function NewEmissionView({
               {docType === 'FORMA_LIBRE' && (
                 <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-800">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                      N.º Factura (Impreso)
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                      <span>N.º Factura (Impreso)</span>
+                      <span className="text-[10px] text-orange-400 font-mono font-bold">
+                        Siguiente: #{nextSuggestedNumber}
+                      </span>
                     </label>
                     <input
                       type="number"
-                      placeholder="300"
+                      placeholder={nextSuggestedNumber.toString()}
                       value={customDocNumber}
                       onChange={(e) => setCustomDocNumber(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-2.5 py-1.5 text-xs text-orange-400 font-mono font-bold outline-none"
                     />
-                    <span className="text-[10px] text-slate-500">Por defecto: 300 o correlativo siguiente</span>
+                    <span className="text-[10px] text-slate-500">
+                      Dejar vacío para correlativo automático (#{nextSuggestedNumber})
+                    </span>
+                    {customDocNumber && documents.some((d: any) => d.doc_type === 'FORMA_LIBRE' && Number(d.doc_number) === Number(customDocNumber)) && (
+                      <div className="text-[10px] text-amber-400 mt-1 font-semibold flex items-center gap-1">
+                        ⚠️ Ya existe la Factura #{customDocNumber} registrada.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-300 mb-1">
@@ -690,7 +711,7 @@ export default function NewEmissionView({
                     </label>
                     <input
                       type="text"
-                      placeholder="Ej. 00-000300"
+                      placeholder={`Ej. ${customDocNumber || nextSuggestedNumber}`}
                       value={controlNumber}
                       onChange={(e) => setControlNumber(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 font-mono outline-none"

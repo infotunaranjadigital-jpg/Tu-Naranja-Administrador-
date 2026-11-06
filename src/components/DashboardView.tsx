@@ -342,7 +342,7 @@ export default function DashboardView({
                           {clientPendingDoc ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-lg animate-pulse">
                               <Clock className="w-3 h-3 text-amber-400" />
-                              Cobro Pendiente: ${clientPendingDoc.total_amount_currency}
+                              Cobro Pendiente: {clientPendingDoc.currency === 'VES' ? `Bs. ${clientPendingDoc.total_bs_applied?.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` : `$${clientPendingDoc.total_amount_currency}`}
                             </span>
                           ) : isToday ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-lg animate-pulse">
@@ -577,7 +577,10 @@ export default function DashboardView({
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-200 truncate">{d.client_name}</span>
                         <span className="font-mono font-bold text-amber-400 shrink-0 ml-2">
-                          ${d.total_amount_currency} USD
+                          {d.currency === 'VES'
+                            ? `$${(Number(d.base_usd_bcv) || (Number(d.total_bs_applied) / (Number(d.applied_rate) || 1))).toFixed(2)} USD`
+                            : `$${d.total_amount_currency} USD`
+                          }
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">

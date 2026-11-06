@@ -174,7 +174,7 @@ export default function DocumentsView({
                           <span>PP-{(doc.doc_number || 101).toString().padStart(4, '0')}</span>
                         </span>
                       ) : doc.doc_type === 'FORMA_LIBRE' ? (
-                        <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded">
+                        <span className={`text-[10px] ${doc.status === 'CANCELLED' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 line-through' : 'bg-blue-500/20 text-blue-300 border-blue-500/30'} border px-2 py-0.5 rounded`}>
                           Factura #{doc.doc_number}
                         </span>
                       ) : (
@@ -190,8 +190,21 @@ export default function DocumentsView({
                       <div className="font-semibold text-slate-200">{doc.client_business_name || doc.client_name}</div>
                       <div className="text-[10px] text-slate-500">{doc.client_rif || 'Sin RIF'}</div>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400">
-                      ${doc.total_amount_currency?.toFixed(2)} USD
+                    <td className="py-3.5 px-4 text-right font-mono font-bold">
+                      {doc.currency === 'VES' ? (
+                        <div>
+                          <div className="text-emerald-400">
+                            ${(Number(doc.base_usd_bcv) || (Number(doc.total_bs_applied) / (Number(doc.applied_rate) || 1))).toFixed(2)} USD
+                          </div>
+                          <div className="text-[10px] text-amber-400/90 font-normal">
+                            (Factura en Bs.)
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-emerald-400">
+                          ${Number(doc.total_amount_currency)?.toFixed(2)} USD
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-100">
                       Bs. {formatBs(doc.total_bs_applied)}
@@ -214,6 +227,11 @@ export default function DocumentsView({
                             Vigente (3d)
                           </span>
                         )
+                      ) : doc.status === 'CANCELLED' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full" title={doc.notes || 'Documento Anulado'}>
+                          <X className="w-3 h-3" />
+                          Anulada
+                        </span>
                       ) : doc.payment_status === 'PAID' ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                           <CheckCircle className="w-3 h-3" />
@@ -291,7 +309,7 @@ export default function DocumentsView({
               Confirmar Cobro ({payDocModal.doc_type === 'FORMA_LIBRE' ? `Factura #${payDocModal.doc_number}` : `Recibo #${payDocModal.doc_number}`})
             </h3>
             <p className="text-xs text-slate-400 mb-4">
-              Cliente: <strong className="text-slate-200">{payDocModal.client_name}</strong> | Monto: <strong className="text-emerald-400 font-mono">${payDocModal.total_amount_currency} USD</strong> (Bs. {formatBs(payDocModal.total_bs_applied)})
+              Cliente: <strong className="text-slate-200">{payDocModal.client_name}</strong> | Monto: <strong className="text-emerald-400 font-mono">{payDocModal.currency === 'VES' ? `Bs. ${formatBs(payDocModal.total_bs_applied)} (Ref: $${(Number(payDocModal.base_usd_bcv) || (Number(payDocModal.total_bs_applied) / (Number(payDocModal.applied_rate) || 1))).toFixed(2)} USD)` : `$${payDocModal.total_amount_currency} USD (Bs. ${formatBs(payDocModal.total_bs_applied)})`}</strong>
             </p>
 
             <form onSubmit={handleConfirmPayment} className="space-y-4 text-xs">

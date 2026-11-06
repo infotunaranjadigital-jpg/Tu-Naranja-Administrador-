@@ -221,6 +221,7 @@ export default function Home() {
           <NewEmissionView
             clients={clients}
             rates={rates}
+            documents={documents}
             initialClient={selectedClientForEmission}
             onEmissionSuccess={handleEmissionSuccess}
           />
