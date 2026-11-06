@@ -310,26 +310,31 @@ function initSchema(db: DatabaseSync) {
       db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('last_forma_libre_number', String(maxDoc.max_num));
     }
   } catch {}
-  // Asegurar feminaid en trabajos puntuales (sin mensualidad)
+  // Asegurar feminaid en trabajos puntuales (sin mensualidad) y nombre Aguerrefem
   try {
     db.exec(`
       UPDATE clients 
-      SET base_monthly_fee = 0.0, 
-          notes = 'Cliente para trabajos puntuales (rotulados e impresiones especiales). No tiene mensualidad fija de redes sociales.' 
+      SET name = 'Aguerrefem (Servicios Feminaid 2021 CA)',
+          business_name = 'Servicios Feminaid 2021 CA',
+          base_monthly_fee = 0.0, 
+          preferred_document = 'FORMA_LIBRE',
+          default_rate_type = 'BCV',
+          notes = 'Cliente para trabajos puntuales (rotulados, impresiones especiales, pulseras de campaña). No tiene mensualidad fija de redes sociales.' 
       WHERE id = 'feminaid';
     `);
   } catch {}
 
-    // Limpieza y sincronización canónica de Facturas Forma Libre (Noviembre 2026):
+  // Limpieza y sincronización canónica de Facturas Forma Libre (Noviembre 2026):
   // Factura 300: MANTICA - Campaña Noviembre Azul / Cáncer de Próstata ($404 USD, Tasa BCV 893.22 Bs/$)
   // Factura 301: MANTICA - Mensualidad Noviembre + Ads + Mes Rosa ($490 USD, Tasa BCV 889.58 Bs/$)
-  // Factura 302: Centro Cerámico García ($170 USD, Tasa Promedio 946.31 Bs/$, Nº de Control 302)
+  // Factura 302: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72, Tasa BCV 896.12)
+  // Factura 303: Centro Cerámico García ($170 USD, Tasa Promedio 946.31 Bs/$, Nº de Control 302)
   try {
     db.exec(`
       DELETE FROM documents 
       WHERE doc_type = 'FORMA_LIBRE' 
         AND issue_date >= '2026-11-01' 
-        AND id IN ('doc_forma_libre_298', 'doc_forma_libre_299', 'doc_forma_libre_300', 'doc_forma_libre_301', 'doc_forma_libre_302');
+        AND id IN ('doc_forma_libre_298', 'doc_forma_libre_299', 'doc_forma_libre_300', 'doc_forma_libre_301', 'doc_forma_libre_302', 'doc_forma_libre_303');
     `);
 
     const insertDoc = db.prepare(`
@@ -422,24 +427,55 @@ function initSchema(db: DatabaseSync) {
       'TRANSFERENCIA_BS', 'Confirmado', '2026-11-03', 'Jarvick', null
     );
 
-    // 3. Factura 302: Centro Cerámico García (con Nº de Control SENIAT 302)
+    // 3. Factura 302: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72 Total con IVA)
+    const bcvAguerrefem = 896.12;
+    const totalBs302 = 51046.72;
+    const subtotalBs302 = 44005.79;
+    const ivaBs302 = 7040.93;
+    const usdEq302 = Number((totalBs302 / bcvAguerrefem).toFixed(2));
+
+    const aguerrefemItems = [
+      {
+        description: '100 pulseras cáncer de mama',
+        category: 'MATERIAL_IMPRESO',
+        unit: 'Unidades',
+        quantity: 100,
+        unitPrice: 440.06,
+        amount: subtotalBs302
+      }
+    ];
+
+    insertDoc.run(
+      'doc_forma_libre_302', 'FORMA_LIBRE', 302, 'feminaid', 'J-50125683-7', '2026-11-06', '2026-11-06',
+      'EMITTED', 'PENDING', 'VES', subtotalBs302,
+      'BCV', bcvAguerrefem, bcvAguerrefem,
+      subtotalBs302, 0.16, ivaBs302, totalBs302,
+      0, 0, 0,
+      0, 0, totalBs302, usdEq302,
+      totalBs302, usdEq302, JSON.stringify(aguerrefemItems),
+      '100 pulseras campaña cáncer de mama',
+      'TRANSFERENCIA_BS', null, null, 'Jarvick', '302'
+    );
+
+    // 4. Factura 303: Centro Cerámico García (con Nº de Control SENIAT 302)
     const garciaItems = [
       { description: 'Manejo mensual de redes sociales (noviembre)', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 140 },
       { description: 'Jornada de grabación mensual en tienda', category: 'GRABACIONES', unit: '1.0', quantity: 1, amount: 30 }
     ];
 
     insertDoc.run(
-      'doc_forma_libre_302', 'FORMA_LIBRE', 302, 'cc-garcia', 'J-31275024-3', '2026-11-03', '2026-11-03',
+      'doc_forma_libre_303', 'FORMA_LIBRE', 303, 'cc-garcia', 'J-31275024-3', '2026-11-03', '2026-11-03',
       'EMITTED', 'PENDING', 'USD', 170.0,
       'PROMEDIO', 946.31, 891.11,
       160872.70, 0.16, 25739.63, 186612.33,
       1, 75, 19304.72,
       2, 3217.45, 164090.16, 149.33,
-      180238.12, 170.0, JSON.stringify(garciaItems), 'Cobro mensualidad noviembre a tasa promedio P2P/BCV + Jornada de grabación',
+      180238.12, 170.0, JSON.stringify(garciaItems),
+      'Cobro mensualidad noviembre a tasa promedio P2P/BCV + Jornada de grabación',
       'TRANSFERENCIA_BS', null, null, 'Jarvick', '302'
     );
 
-    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_forma_libre_number', '302')").run();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_forma_libre_number', '303')").run();
   } catch (e) {
     console.warn('Error migration November Forma Libre:', e);
   }

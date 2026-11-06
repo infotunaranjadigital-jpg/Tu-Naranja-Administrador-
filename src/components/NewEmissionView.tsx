@@ -68,6 +68,7 @@ export default function NewEmissionView({
   const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [currency, setCurrency] = useState<'USD' | 'VES'>('USD');
+  const [targetTotalBs, setTargetTotalBs] = useState('');
   const [rateType, setRateType] = useState<string>('BCV');
   const [customRate, setCustomRate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -304,6 +305,22 @@ export default function NewEmissionView({
     setItems(updated);
   };
 
+  const handleApplyTargetTotalBs = () => {
+    const val = parseFloat(targetTotalBs);
+    if (!val || val <= 0) return;
+    const ivaMult = docType === 'FORMA_LIBRE' ? 1.16 : 1.0;
+    const baseBs = Number((val / ivaMult).toFixed(2));
+    const updated = [...items];
+    if (updated.length > 0) {
+      updated[0].amount = baseBs;
+      const qty = Number(updated[0].quantity) || 1;
+      if (qty > 1) {
+        updated[0].unitPrice = Number((baseBs / qty).toFixed(2));
+      }
+      setItems(updated);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isProspectMode) {
@@ -333,7 +350,10 @@ export default function NewEmissionView({
           issue_date: issueDate,
           due_date: docType === 'PRESUPUESTO' ? (dueDate || addBusinessDays(issueDate, 3)) : dueDate,
           currency,
-          total_amount_currency: totalAmountCurrency,
+          total_amount_currency: currency === 'USD' ? totalAmountCurrency : subtotalBs,
+          subtotal_bs: subtotalBs,
+          iva_amount_bs: ivaAmountBs,
+          total_bs_applied: totalBs,
           rate_type_applied: rateType,
           custom_rate: rateType === 'CUSTOM' ? effectiveRate : undefined,
           items,
@@ -690,14 +710,64 @@ export default function NewEmissionView({
           </div>
         </div>
 
-        {/* Step 2: Rate Selector */}
+        {/* Step 3: Currency & Rate Selector */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
           <div>
+            <label className="block text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">
+              3. Moneda de Facturación
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => setCurrency('USD')}
+                className={`p-3 rounded-xl border text-center transition flex items-center justify-center gap-2.5 ${
+                  currency === 'USD'
+                    ? 'bg-orange-600/20 border-orange-500 text-orange-300 font-bold shadow-lg shadow-orange-600/20 ring-1 ring-orange-500/50'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <div className="text-left">
+                  <div className="text-xs font-bold">Dólares ($ USD)</div>
+                  <div className="text-[10px] text-slate-400">Ingreso de tarifas en divisas</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrency('VES')}
+                className={`p-3 rounded-xl border text-center transition flex items-center justify-center gap-2.5 ${
+                  currency === 'VES'
+                    ? 'bg-orange-600/20 border-orange-500 text-orange-300 font-bold shadow-lg shadow-orange-600/20 ring-1 ring-orange-500/50'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <span className="text-lg">🇻🇪</span>
+                <div className="text-left">
+                  <div className="text-xs font-bold">Bolívares (Bs. VES)</div>
+                  <div className="text-[10px] text-slate-400">Ingreso manual directo en Bolívares</div>
+                </div>
+              </button>
+            </div>
+
+            {currency === 'VES' && (
+              <div className="mb-4 bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-xs text-orange-200">
+                <p className="font-semibold flex items-center gap-1.5 mb-1">
+                  🇻🇪 Modo Facturación Directa en Bolívares activado
+                </p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Los importes de los renglones se ingresan en <strong>Bolívares (Bs.)</strong>. El sistema aplicará la tasa seleccionada para calcular automáticamente el contravalor referencial en dólares y la Unidad Base Oficial BCV.
+                </p>
+              </div>
+            )}
+
             <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">
-              3. Tasa de Cambio para Liquidar este Cobro
+              {currency === 'USD' ? 'Tasa de Cambio para Liquidar este Cobro' : 'Tasa de Referencia Cambiaria'}
             </label>
             <p className="text-xs text-slate-400 mb-3">
-              Puedes cambiarla según la disponibilidad del cliente (efectivo, Binance, transferencia Bs o promedio).
+              {currency === 'USD'
+                ? 'Puedes cambiarla según la disponibilidad del cliente (efectivo, Binance, transferencia Bs o promedio).'
+                : 'Tasa para calcular la equivalencia referencial en USD y el patrón contable oficial BCV.'}
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -769,7 +839,7 @@ export default function NewEmissionView({
           </div>
         </div>
 
-        {/* Step 3: Items / Conceptos */}
+        {/* Step 4: Items / Conceptos */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -784,6 +854,39 @@ export default function NewEmissionView({
               Agregar Renglón
             </button>
           </div>
+
+          {currency === 'VES' && (
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-0.5">
+                <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                  🧮 Asistente de Desglose de IVA en Bolívares
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  Si tienes un <strong>Total con IVA incluido</strong> acordado (ej. 51.046,72 Bs.), ingrésalo y desglosaremos la base imponible y el 16% de IVA automáticamente.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">Bs.</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="51046.72"
+                    value={targetTotalBs}
+                    onChange={(e) => setTargetTotalBs(e.target.value)}
+                    className="w-36 bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-orange-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyTargetTotalBs}
+                  className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition whitespace-nowrap text-xs"
+                >
+                  Desglosar en Renglón
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2.5">
             {items.map((it, idx) => (
@@ -828,16 +931,18 @@ export default function NewEmissionView({
                     className="w-14 bg-slate-900 text-center text-xs font-mono text-slate-300 rounded px-1.5 py-1.5 border border-slate-800"
                   />
 
-                  <div className="w-24 relative">
-                    <span className="absolute left-2 top-1.5 text-xs text-slate-500 font-mono">$</span>
+                  <div className="w-28 sm:w-36 relative">
+                    <span className="absolute left-2 top-1.5 text-xs text-slate-500 font-mono">
+                      {currency === 'USD' ? '$' : 'Bs.'}
+                    </span>
                     <input
                       type="number"
                       step="0.01"
                       required
-                      placeholder="Monto $"
+                      placeholder={currency === 'USD' ? 'Monto $' : 'Monto Bs.'}
                       value={it.amount}
                       onChange={(e) => handleItemChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-900 text-right text-xs font-mono font-bold text-emerald-400 rounded pl-5 pr-2 py-1.5 border border-slate-800"
+                      className="w-full bg-slate-900 text-right text-xs font-mono font-bold text-emerald-400 rounded pl-7 pr-2 py-1.5 border border-slate-800"
                     />
                   </div>
 
@@ -862,17 +967,24 @@ export default function NewEmissionView({
                 <span className="text-[10px] text-orange-400 font-bold uppercase tracking-wider block mb-1">
                   Liquidación de la Factura / Recibo
                 </span>
-                <div className="flex justify-between text-slate-400">
-                  <span>Total en Divisa ($):</span>
-                  <span className="font-mono font-bold text-emerald-400">${totalAmountCurrency.toFixed(2)} USD</span>
-                </div>
+                {currency === 'USD' ? (
+                  <div className="flex justify-between text-slate-400">
+                    <span>Total en Divisa ($):</span>
+                    <span className="font-mono font-bold text-emerald-400">${totalAmountCurrency.toFixed(2)} USD</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-slate-400">
+                    <span>Moneda de Emisión:</span>
+                    <span className="font-mono font-bold text-amber-300">🇻🇪 Bolívares (VES)</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tasa Aplicada ({rateType}):</span>
                   <span className="font-mono text-amber-300">{effectiveRate} Bs/$</span>
                 </div>
                 <div className="flex justify-between text-slate-300">
-                  <span>Subtotal en Bs:</span>
-                  <span className="font-mono">Bs. {formatBs(subtotalBs)}</span>
+                  <span>Subtotal en Bs (Base Imponible):</span>
+                  <span className="font-mono font-bold">Bs. {formatBs(subtotalBs)}</span>
                 </div>
                 {docType === 'FORMA_LIBRE' && (
                   <div className="flex justify-between text-slate-300">
@@ -884,6 +996,14 @@ export default function NewEmissionView({
                   <span>Total a Pagar:</span>
                   <span className="font-mono text-orange-400 text-base">Bs. {formatBs(totalBs)}</span>
                 </div>
+                {currency === 'VES' && (
+                  <div className="flex justify-between text-slate-400 text-[11px] pt-0.5">
+                    <span>Equivalente en Dólares:</span>
+                    <span className="font-mono text-emerald-400 font-semibold">
+                      ${(totalBs / effectiveRate).toFixed(2)} USD
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Right: UNIDAD BASE BCV PATRON OFICIAL */}

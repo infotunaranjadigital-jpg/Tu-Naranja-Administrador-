@@ -181,10 +181,18 @@ export async function POST(req: Request) {
       ivaAmountBs = Number((subtotalBs * ivaRate).toFixed(2));
       totalBsApplied = Number((subtotalBs + ivaAmountBs).toFixed(2));
     } else {
-      // Currency is already VES
-      totalBsApplied = totalCurrency;
-      subtotalBs = Number((totalBsApplied / (1 + ivaRate)).toFixed(2));
-      ivaAmountBs = Number((totalBsApplied - subtotalBs).toFixed(2));
+      // Moneda en Bolívares (VES)
+      if (data.subtotal_bs !== undefined && data.total_bs_applied !== undefined) {
+        subtotalBs = Number(Number(data.subtotal_bs).toFixed(2));
+        ivaAmountBs = Number(Number(data.iva_amount_bs ?? (subtotalBs * ivaRate)).toFixed(2));
+        totalBsApplied = Number(Number(data.total_bs_applied).toFixed(2));
+      } else {
+        const itemsSum = items.reduce((acc: number, it: any) => acc + (Number(it.amount) || 0), 0);
+        subtotalBs = Number(itemsSum.toFixed(2));
+        ivaAmountBs = Number((subtotalBs * ivaRate).toFixed(2));
+        totalBsApplied = Number((subtotalBs + ivaAmountBs).toFixed(2));
+      }
+      totalCurrency = subtotalBs;
     }
 
     // 4. Compute UNIDAD BASE BCV (La referencia contable oficial)
@@ -202,7 +210,7 @@ export async function POST(req: Request) {
     let islrRetentionPercent = 0;
     let islrRetentionAmountBs = 0;
     let netPayableBs = totalBsApplied;
-    let netPayableUsd = totalCurrency;
+    let netPayableUsd = appliedRate > 0 ? Number((totalBsApplied / appliedRate).toFixed(2)) : totalCurrency;
 
     if (applyWithholding && doc_type === 'FORMA_LIBRE') {
       ivaRetentionPercent = Number(data.iva_retention_percent ?? client.iva_retention_percent ?? 75);
