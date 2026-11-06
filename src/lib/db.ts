@@ -329,7 +329,8 @@ function initSchema(db: DatabaseSync) {
   // Factura 301: MANTICA - Mensualidad Noviembre + Ads + Mes Rosa ($490 USD, Tasa BCV 889.58 Bs/$)
   // Factura 300: ANULADA (impresa con error por cálculo de anticipos)
   // Factura 301: MANTICA ($490 USD Mensualidad Noviembre)
-  // Factura 303: Centro Cerámico García ($170 USD, Tasa Promedio 946.31 Bs/$, Nº de Control 302)
+  // Factura 302: Centro Cerámico García ($170 USD, Tasa Promedio 946.31 Bs/$, Nº de Control 302)
+  // Factura 303: Sociedad Venezolana de Mastología (SVM) ($240 USD a Tasa BCV 893.22 Bs/$, Total Bs. 248.672,45)
   // Factura 304: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72)
   // Factura 305: Clínica Leopoldo Aguerrevere (MATERNO INFANTIL C.A.) - Cotización 1055 R2 (Base Bs. 359.739,32, IVA Bs. 57.558,29, Total Bs. 417.297,61)
   try {
@@ -427,7 +428,57 @@ function initSchema(db: DatabaseSync) {
       'TRANSFERENCIA_BS', 'Confirmado', '2026-11-03', 'Jarvick', null
     );
 
-    // 3. Factura 304: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72 Total con IVA)
+    // 3. Factura 302: Centro Cerámico García (con Nº de Control SENIAT 302)
+    const garciaItems = [
+      { description: 'Manejo mensual de redes sociales (noviembre)', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 140 },
+      { description: 'Jornada de grabación mensual en tienda', category: 'GRABACIONES', unit: '1.0', quantity: 1, amount: 30 }
+    ];
+
+    insertDoc.run(
+      'doc_forma_libre_302', 'FORMA_LIBRE', 302, 'cc-garcia', 'J-31275024-3', '2026-11-03', '2026-11-03',
+      'EMITTED', 'PAID', 'USD', 170.0,
+      'PROMEDIO', 946.31, 891.11,
+      160872.70, 0.16, 25739.63, 186612.33,
+      1, 75, 19304.72,
+      2, 3217.45, 164090.16, 149.33,
+      180238.12, 170.0, JSON.stringify(garciaItems),
+      'Cobro mensualidad noviembre a tasa promedio P2P/BCV + Jornada de grabación',
+      'TRANSFERENCIA_BS', 'Confirmado', '2026-11-03', 'Jarvick', '302'
+    );
+
+    // 4. Factura 303: Sociedad Venezolana de Mastología (SVM) - Manejo de Redes Sociales Noviembre
+    const bcvSvm = 893.22;
+    const subtotalBs303 = 214372.80;
+    const ivaBs303 = 34299.65;
+    const totalBs303 = 248672.45;
+    const svmUsd = 240.0;
+
+    const svmItems = [
+      {
+        description: 'Manejo de Redes Sociales (noviembre)',
+        category: 'MARKETING_RRSS',
+        unit: '1.0',
+        quantity: 1,
+        unitPrice: svmUsd,
+        amount: svmUsd,
+        amount_bs: subtotalBs303,
+        unit_price_bs: subtotalBs303
+      }
+    ];
+
+    insertDoc.run(
+      'doc_forma_libre_303', 'FORMA_LIBRE', 303, 'soc-mastologia', 'J-00331364-5', '2026-11-04', '2026-11-04',
+      'EMITTED', 'PAID', 'USD', svmUsd,
+      'BCV', bcvSvm, bcvSvm,
+      subtotalBs303, 0.16, ivaBs303, totalBs303,
+      0, 0, 0,
+      0, 0, totalBs303, svmUsd,
+      totalBs303, svmUsd, JSON.stringify(svmItems),
+      'Manejo de Redes Sociales noviembre SVM',
+      'TRANSFERENCIA_BS', 'Confirmado', '2026-11-04', 'Jarvick', null
+    );
+
+    // 5. Factura 304: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72 Total con IVA)
     const bcvAguerrefem = 896.12;
     const totalBs304 = 51046.72;
     const subtotalBs304 = 44005.79;
@@ -454,25 +505,7 @@ function initSchema(db: DatabaseSync) {
       0, 0, totalBs304, usdEq304,
       totalBs304, usdEq304, JSON.stringify(aguerrefemItems),
       '100 pulseras campaña cáncer de mama',
-      'TRANSFERENCIA_BS', null, '2026-11-06', 'Jarvick', '304'
-    );
-
-    // 4. Factura 303: Centro Cerámico García (con Nº de Control SENIAT 302)
-    const garciaItems = [
-      { description: 'Manejo mensual de redes sociales (noviembre)', category: 'MARKETING_RRSS', unit: '1.0', quantity: 1, amount: 140 },
-      { description: 'Jornada de grabación mensual en tienda', category: 'GRABACIONES', unit: '1.0', quantity: 1, amount: 30 }
-    ];
-
-    insertDoc.run(
-      'doc_forma_libre_303', 'FORMA_LIBRE', 303, 'cc-garcia', 'J-31275024-3', '2026-11-03', '2026-11-03',
-      'EMITTED', 'PAID', 'USD', 170.0,
-      'PROMEDIO', 946.31, 891.11,
-      160872.70, 0.16, 25739.63, 186612.33,
-      1, 75, 19304.72,
-      2, 3217.45, 164090.16, 149.33,
-      180238.12, 170.0, JSON.stringify(garciaItems),
-      'Cobro mensualidad noviembre a tasa promedio P2P/BCV + Jornada de grabación',
-      'TRANSFERENCIA_BS', null, '2026-11-03', 'Jarvick', '302'
+      'TRANSFERENCIA_BS', 'Confirmado', '2026-11-06', 'Jarvick', '304'
     );
 
     // 5. Factura 305: Clínica Leopoldo Aguerrevere (MATERNO INFANTIL C.A.) - Liquidación Exacta según Anticipos
