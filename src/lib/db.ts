@@ -329,8 +329,8 @@ function initSchema(db: DatabaseSync) {
   // Factura 301: MANTICA - Mensualidad Noviembre + Ads + Mes Rosa ($490 USD, Tasa BCV 889.58 Bs/$)
   // Factura 300: ANULADA (impresa con error por cálculo de anticipos)
   // Factura 301: MANTICA ($490 USD Mensualidad Noviembre)
-  // Factura 302: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72)
   // Factura 303: Centro Cerámico García ($170 USD, Tasa Promedio 946.31 Bs/$, Nº de Control 302)
+  // Factura 304: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72)
   // Factura 305: Clínica Leopoldo Aguerrevere (MATERNO INFANTIL C.A.) - Cotización 1055 R2 (Base Bs. 359.739,32, IVA Bs. 57.558,29, Total Bs. 417.297,61)
   try {
     db.exec(`
@@ -427,12 +427,12 @@ function initSchema(db: DatabaseSync) {
       'TRANSFERENCIA_BS', 'Confirmado', '2026-11-03', 'Jarvick', null
     );
 
-    // 3. Factura 302: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72 Total con IVA)
+    // 3. Factura 304: Aguerrefem (Servicios Feminaid) - 100 pulseras cáncer de mama (Bs. 51.046,72 Total con IVA)
     const bcvAguerrefem = 896.12;
-    const totalBs302 = 51046.72;
-    const subtotalBs302 = 44005.79;
-    const ivaBs302 = 7040.93;
-    const usdEq302 = Number((totalBs302 / bcvAguerrefem).toFixed(2));
+    const totalBs304 = 51046.72;
+    const subtotalBs304 = 44005.79;
+    const ivaBs304 = 7040.93;
+    const usdEq304 = Number((totalBs304 / bcvAguerrefem).toFixed(2));
 
     const aguerrefemItems = [
       {
@@ -441,20 +441,20 @@ function initSchema(db: DatabaseSync) {
         unit: 'Unidades',
         quantity: 100,
         unitPrice: 440.06,
-        amount: subtotalBs302
+        amount: subtotalBs304
       }
     ];
 
     insertDoc.run(
-      'doc_forma_libre_302', 'FORMA_LIBRE', 302, 'feminaid', 'J-50125683-7', '2026-11-06', '2026-11-06',
-      'EMITTED', 'PAID', 'VES', subtotalBs302,
+      'doc_forma_libre_304', 'FORMA_LIBRE', 304, 'feminaid', 'J-50125683-7', '2026-11-06', '2026-11-06',
+      'EMITTED', 'PAID', 'VES', subtotalBs304,
       'BCV', bcvAguerrefem, bcvAguerrefem,
-      subtotalBs302, 0.16, ivaBs302, totalBs302,
+      subtotalBs304, 0.16, ivaBs304, totalBs304,
       0, 0, 0,
-      0, 0, totalBs302, usdEq302,
-      totalBs302, usdEq302, JSON.stringify(aguerrefemItems),
+      0, 0, totalBs304, usdEq304,
+      totalBs304, usdEq304, JSON.stringify(aguerrefemItems),
       '100 pulseras campaña cáncer de mama',
-      'TRANSFERENCIA_BS', null, '2026-11-06', 'Jarvick', '302'
+      'TRANSFERENCIA_BS', null, '2026-11-06', 'Jarvick', '304'
     );
 
     // 4. Factura 303: Centro Cerámico García (con Nº de Control SENIAT 302)
