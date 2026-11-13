@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
   FileText, Users, DollarSign, BarChart3, 
   Briefcase, PlusCircle, LogOut, RefreshCw, CheckCircle2,
-  AlertTriangle
+  AlertTriangle, TrendingUp
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -138,6 +138,18 @@ export default function Navbar({
             </button>
 
             <button
+              onClick={() => onTabChange('social-reports')}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                currentTab === 'social-reports' 
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 text-orange-400" />
+              Métricas Redes
+            </button>
+
+            <button
               onClick={() => onTabChange('team')}
               className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
                 currentTab === 'team' 
@@ -174,6 +186,7 @@ export default function Navbar({
         <button onClick={() => onTabChange('new-emission')} className="whitespace-nowrap px-2 py-1 text-orange-400 font-bold">Emitir (+)</button>
         <button onClick={() => onTabChange('documents')} className="whitespace-nowrap px-2 py-1 text-slate-300">Historial</button>
         <button onClick={() => onTabChange('reports')} className="whitespace-nowrap px-2 py-1 text-slate-300">Reportes</button>
+        <button onClick={() => onTabChange('social-reports')} className="whitespace-nowrap px-2 py-1 text-orange-400 font-semibold">Redes</button>
         <button onClick={() => onTabChange('team')} className="whitespace-nowrap px-2 py-1 text-slate-300">RRHH</button>
       </div>
     </header>

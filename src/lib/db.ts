@@ -185,6 +185,33 @@ function initSchema(db: DatabaseSync) {
       FOREIGN KEY (member_id) REFERENCES team_members(id)
     );
 
+    CREATE TABLE IF NOT EXISTS monthly_social_reports (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      period TEXT NOT NULL, -- YYYY-MM
+      platform TEXT NOT NULL DEFAULT 'INSTAGRAM',
+      account_username TEXT,
+      followers_count INTEGER DEFAULT 0,
+      followers_growth INTEGER DEFAULT 0,
+      reach_total INTEGER DEFAULT 0,
+      impressions_total INTEGER DEFAULT 0,
+      total_posts INTEGER DEFAULT 0,
+      total_interactions INTEGER DEFAULT 0,
+      total_comments INTEGER DEFAULT 0,
+      total_messages INTEGER DEFAULT 0,
+      sentiment_positive_percent REAL DEFAULT 0,
+      sentiment_neutral_percent REAL DEFAULT 0,
+      sentiment_negative_percent REAL DEFAULT 0,
+      leads_intent_percent REAL DEFAULT 0,
+      executive_summary TEXT,
+      sentiment_breakdown_json TEXT,
+      top_posts_json TEXT,
+      raw_metrics_json TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients(id)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -244,6 +271,52 @@ function initSchema(db: DatabaseSync) {
   } catch {}
   try {
     db.exec(`ALTER TABLE designer_evaluations ADD COLUMN clean_rate_percent REAL DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN composio_account_id TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN instagram_username TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN whatsapp_phone TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN social_start_date TEXT`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN initial_followers INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN initial_follows INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN initial_media_count INTEGER DEFAULT 0`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE clients ADD COLUMN initial_bio TEXT`);
+  } catch {}
+  try {
+    db.exec(`
+      INSERT OR IGNORE INTO clients (
+        id, name, business_name, rif, email, default_currency, 
+        base_monthly_fee, default_rate_type, notes, active,
+        composio_account_id, instagram_username
+      ) VALUES (
+        'tu-naranja-digital', 
+        'Tu Naranja Digital (Agencia)', 
+        'Tu Naranja Digital C.A.', 
+        'J-50000000-0', 
+        'info@tunaranjadigital.com', 
+        'USD', 
+        0, 
+        'BCV', 
+        'Cuenta matriz de la agencia', 
+        1,
+        'instagram_renish-capel',
+        'tunaranjadigital'
+      )
+    `);
   } catch {}
 
   // Garantizar separación absoluta y nombres canónicos de Arinita y Odontólogo (Dr. Rony)

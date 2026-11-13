@@ -9,6 +9,7 @@ import NewEmissionView from '@/components/NewEmissionView';
 import DocumentsView from '@/components/DocumentsView';
 import ReportsView from '@/components/ReportsView';
 import TeamView from '@/components/TeamView';
+import SocialReportsView from '@/components/SocialReportsView';
 import RateBarModal from '@/components/RateBarModal';
 import FormaLibrePrint from '@/components/FormaLibrePrint';
 import ReceiptPrint from '@/components/ReceiptPrint';
@@ -237,6 +238,10 @@ export default function Home() {
 
         {currentTab === 'reports' && (
           <ReportsView />
+        )}
+
+        {currentTab === 'social-reports' && (
+          <SocialReportsView clients={clients} />
         )}
 
         {currentTab === 'team' && (
