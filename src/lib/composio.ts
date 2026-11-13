@@ -149,16 +149,26 @@ export async function syncSocialMetricsForClient(clientId: string, period?: stri
 
   const currentPeriod = period || new Date().toISOString().slice(0, 7); // 'YYYY-MM'
 
+  // Resolver alias exacto para Composio multi-cuentas
+  let accountSlug = 'TND-renish-capel';
+  if (client.composio_account_id === 'SVO' || client.id === 'soc-oncologia' || client.name.toLowerCase().includes('oncolog')) {
+    accountSlug = 'SVO';
+  } else if (client.composio_account_id) {
+    accountSlug = client.composio_account_id;
+  }
+
   // 1. Obtener información de perfil e insights via COMPOSIO_MULTI_EXECUTE_TOOL
   const execPayload = {
     thought: `Obtener estadísticas e insights para ${client.name}`,
     tools: [
       {
         tool_slug: 'INSTAGRAM_GET_USER_INFO',
+        account: accountSlug,
         arguments: { ig_user_id: 'me' }
       },
       {
         tool_slug: 'INSTAGRAM_GET_USER_INSIGHTS',
+        account: accountSlug,
         arguments: {
           metric: ['reach', 'accounts_engaged', 'total_interactions'],
           period: 'day',
@@ -167,6 +177,7 @@ export async function syncSocialMetricsForClient(clientId: string, period?: stri
       },
       {
         tool_slug: 'INSTAGRAM_GET_IG_USER_MEDIA',
+        account: accountSlug,
         arguments: {
           ig_user_id: 'me',
           limit: 15,
@@ -227,6 +238,7 @@ export async function syncSocialMetricsForClient(clientId: string, period?: stri
   if (postsWithComments.length > 0) {
     const commentTools = postsWithComments.slice(0, 5).map(m => ({
       tool_slug: 'INSTAGRAM_GET_IG_MEDIA_COMMENTS',
+      account: accountSlug,
       arguments: { ig_media_id: m.id }
     }));
 

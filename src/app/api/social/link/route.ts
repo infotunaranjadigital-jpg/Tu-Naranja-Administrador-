@@ -23,6 +23,10 @@ export async function POST(req: Request) {
     let initMedia = client.initial_media_count || 0;
     let initBio = client.initial_bio || '';
 
+    let accountSlug = composioAccountId || 'TND-renish-capel';
+    if (accountSlug === 'instagram_yester-pyre' || accountSlug === 'SVO' || clientId === 'soc-oncologia') accountSlug = 'SVO';
+    if (accountSlug === 'instagram_renish-capel') accountSlug = 'TND-renish-capel';
+
     // Si aún no tiene métricas iniciales registradas, tomar la foto de partida con Composio
     if (!client.initial_followers && composioAccountId) {
       try {
@@ -30,6 +34,7 @@ export async function POST(req: Request) {
           thought: `Capturar métricas base iniciales para ${client.name}`,
           tools: [{
             tool_slug: 'INSTAGRAM_GET_USER_INFO',
+            account: accountSlug,
             arguments: { ig_user_id: 'me' }
           }],
           sync_response_to_workbench: false,

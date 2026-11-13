@@ -313,9 +313,31 @@ function initSchema(db: DatabaseSync) {
         'BCV', 
         'Cuenta matriz de la agencia', 
         1,
-        'instagram_renish-capel',
+        'TND-renish-capel',
         'tunaranjadigital'
       )
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      UPDATE clients SET 
+        composio_account_id = 'TND-renish-capel',
+        instagram_username = 'tunaranjadigital',
+        initial_followers = 2903,
+        social_start_date = '2026-11-13'
+      WHERE id = 'tu-naranja-digital';
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      UPDATE clients SET 
+        composio_account_id = 'SVO',
+        instagram_username = 'svoncologia',
+        initial_followers = 5359,
+        initial_follows = 12,
+        initial_media_count = 589,
+        social_start_date = '2026-11-13'
+      WHERE id = 'soc-oncologia';
     `);
   } catch {}
 

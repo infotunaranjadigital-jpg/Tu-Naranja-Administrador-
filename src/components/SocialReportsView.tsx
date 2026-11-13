@@ -27,6 +27,8 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
   const [linkInstagramUser, setLinkInstagramUser] = useState('');
   const [linkStartDate, setLinkStartDate] = useState(new Date().toISOString().slice(0, 10));
 
+  const [internalClients, setInternalClients] = useState<any[]>(clients);
+
   // Fetch accounts and reports
   const fetchAccountsAndCurrentReport = async () => {
     setIsLoading(true);
@@ -35,6 +37,9 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
       const accData = await accRes.json();
       if (accData.success) {
         setAccountsData(accData);
+        if (accData.clients && accData.clients.length > 0) {
+          setInternalClients(accData.clients);
+        }
       }
 
       const repRes = await fetch(`/api/social/reports?client_id=${selectedClientId}&period=${selectedPeriod}`);
@@ -55,7 +60,7 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
     fetchAccountsAndCurrentReport();
   }, [selectedClientId, selectedPeriod]);
 
-  const selectedClient = clients.find(c => c.id === selectedClientId) || {
+  const selectedClient = internalClients.find(c => c.id === selectedClientId) || clients.find(c => c.id === selectedClientId) || {
     id: selectedClientId,
     name: 'Tu Naranja Digital (Agencia)',
     instagram_username: 'tunaranjadigital'
@@ -144,9 +149,11 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
             onChange={(e) => setSelectedClientId(e.target.value)}
             className="bg-slate-800 border border-slate-700 text-white text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-orange-500"
           >
-            <option value="tu-naranja-digital">🍊 Tu Naranja Digital (Agencia)</option>
-            {clients.filter(c => c.id !== 'tu-naranja-digital').map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            <option value="tu-naranja-digital">🍊 Tu Naranja Digital (@tunaranjadigital)</option>
+            {internalClients.filter(c => c.id !== 'tu-naranja-digital').map(c => (
+              <option key={c.id} value={c.id}>
+                {c.instagram_username ? `🟢 ${c.name} (@${c.instagram_username})` : `⚪ ${c.name} (Sin vincular)`}
+              </option>
             ))}
           </select>
 
@@ -202,41 +209,61 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-white text-sm">@{selectedClient.instagram_username || 'tunaranjadigital'}</span>
-              <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <CheckCircle className="w-3 h-3" /> Conexión Activa
-              </span>
+              {selectedClient.instagram_username ? (
+                <>
+                  <span className="font-bold text-white text-sm">@{selectedClient.instagram_username}</span>
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <CheckCircle className="w-3 h-3" /> Conexión Activa
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-amber-300 text-sm">Sin cuenta de red vinculada</span>
+                  <button
+                    onClick={() => {
+                      setLinkComposioId(selectedClient.composio_account_id || '');
+                      setLinkInstagramUser(selectedClient.instagram_username || '');
+                      setIsLinkModalOpen(true);
+                    }}
+                    className="text-[10px] font-bold text-orange-400 underline hover:text-orange-300 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/30"
+                  >
+                    + Vincular ahora
+                  </button>
+                </>
+              )}
             </div>
             <p className="text-[11px] text-slate-400">
-              Inicio de gestión: <span className="text-slate-200 font-semibold">{selectedClient.social_start_date || 'Noviembre 2026'}</span>
+              Inicio de gestión: <span className="text-slate-200 font-semibold">{selectedClient.social_start_date || 'Por definir'}</span>
             </p>
           </div>
         </div>
 
         {/* Baseline stats comparison */}
-        <div className="flex items-center gap-4 bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800">
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Seguidores de Partida</span>
-            <span className="font-mono font-bold text-slate-200 text-xs">
-              {(selectedClient.initial_followers || 2903).toLocaleString('es-VE')}
-            </span>
+        {selectedClient.instagram_username && (
+          <div className="flex items-center gap-4 bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800">
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Seguidores de Partida</span>
+              <span className="font-mono font-bold text-slate-200 text-xs">
+                {(selectedClient.initial_followers || 0).toLocaleString('es-VE')}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-slate-800"></div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Crecimiento Neto</span>
+              <span className="font-mono font-bold text-emerald-400 text-xs flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                +{(Math.max(0, (currentReport?.followers_count || selectedClient.initial_followers || 0) - (selectedClient.initial_followers || 0))).toLocaleString('es-VE')}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-slate-800"></div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Período</span>
+              <span className="font-mono font-bold text-amber-400 text-xs">
+                {selectedPeriod}
+              </span>
+            </div>
           </div>
-          <div className="h-6 w-px bg-slate-800"></div>
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Crecimiento Neto</span>
-            <span className="font-mono font-bold text-emerald-400 text-xs flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              +{(Math.max(0, (currentReport?.followers_count || 2903) - (selectedClient.initial_followers || 2903))).toLocaleString('es-VE')}
-            </span>
-          </div>
-          <div className="h-6 w-px bg-slate-800"></div>
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Período</span>
-            <span className="font-mono font-bold text-amber-400 text-xs">
-              {selectedPeriod}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -512,17 +539,21 @@ export default function SocialReportsView({ clients }: SocialReportsViewProps) {
                 <select
                   value={linkComposioId}
                   onChange={(e) => {
-                    setLinkComposioId(e.target.value);
-                    if (e.target.value === 'instagram_renish-capel') {
+                    const val = e.target.value;
+                    setLinkComposioId(val);
+                    if (val === 'SVO' || val === 'instagram_yester-pyre') {
+                      setLinkInstagramUser('svoncologia');
+                    } else if (val === 'TND-renish-capel' || val === 'instagram_renish-capel') {
                       setLinkInstagramUser('tunaranjadigital');
                     }
                   }}
                   className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:border-orange-500"
                 >
                   <option value="">Selecciona una cuenta...</option>
-                  <option value="instagram_renish-capel">Instagram: Tu Naranja Digital (TND-renish-capel)</option>
+                  <option value="TND-renish-capel">Instagram: Tu Naranja Digital (TND-renish-capel / @tunaranjadigital)</option>
+                  <option value="SVO">Instagram: Sociedad Venezolana de Oncología (SVO / @svoncologia)</option>
                   {accountsData?.composioAccounts?.instagram?.map((acc: any) => (
-                    <option key={acc.id} value={acc.id}>{acc.alias || acc.id}</option>
+                    <option key={acc.id} value={acc.alias || acc.id}>{acc.alias || acc.id}</option>
                   ))}
                 </select>
               </div>
