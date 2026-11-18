@@ -58,6 +58,10 @@ export async function PATCH(
     const paidAt = paymentStatus === 'PAID' ? (existing.paid_at || new Date().toISOString()) : null;
     const docNumber = body.doc_number !== undefined ? Number(body.doc_number) : existing.doc_number;
     const controlNumber = body.control_number !== undefined ? body.control_number : existing.control_number;
+    const itemsJson = body.items_json ?? existing.items_json;
+    const notes = body.notes ?? existing.notes;
+    const totalAmountCurrency = body.total_amount_currency ?? existing.total_amount_currency;
+    const totalBsApplied = body.total_bs_applied ?? existing.total_bs_applied;
 
     const stmt = db.prepare(`
       UPDATE documents SET
@@ -67,11 +71,15 @@ export async function PATCH(
         status = ?,
         paid_at = ?,
         doc_number = ?,
-        control_number = ?
+        control_number = ?,
+        items_json = ?,
+        notes = ?,
+        total_amount_currency = ?,
+        total_bs_applied = ?
       WHERE id = ?
     `);
 
-    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, docNumber, controlNumber, id);
+    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, docNumber, controlNumber, itemsJson, notes, totalAmountCurrency, totalBsApplied, id);
 
     // Si se actualizó el doc_number de una forma libre, sincronizar la secuencia para las siguientes facturas
     if (body.doc_number && existing.doc_type === 'FORMA_LIBRE') {
