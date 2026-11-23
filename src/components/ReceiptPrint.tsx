@@ -24,7 +24,12 @@ export default function ReceiptPrint({ document: doc, onBack, onMarkPaid }: Rece
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = ' ';
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const generateWhatsAppMessage = () => {
@@ -112,23 +117,29 @@ Teléfono: 0414-154 42 52
 
       {/* Styled Printable Receipt */}
       <div className="max-w-2xl mx-auto bg-white text-slate-900 shadow-2xl rounded-2xl p-8 sm:p-12 print:shadow-none print:m-0 print:p-6 print:rounded-none relative">
-        <style jsx global>{`
-          @media print {
-            body {
-              background: white !important;
-              color: black !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .print\\:hidden {
-              display: none !important;
-            }
-            @page {
-              size: letter portrait;
-              margin: 15mm;
-            }
-          }
-        `}</style>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @page {
+                size: letter portrait;
+                margin: 0 !important;
+              }
+              @media print {
+                html, body {
+                  background: white !important;
+                  color: black !important;
+                  margin: 0 !important;
+                  padding: 10mm !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                .print\\:hidden {
+                  display: none !important;
+                }
+              }
+            `
+          }}
+        />
 
         {/* Header Tu Naranja Digital */}
         <div className="flex justify-between items-start border-b-2 border-orange-500 pb-6 mb-6">
@@ -161,7 +172,7 @@ Teléfono: 0414-154 42 52
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2 text-slate-600">
             <div>
-              <span className="font-semibold text-slate-700">RIF / C.I.:</span> {doc.client_rif || 'N/A'}
+              <span className="font-semibold text-slate-700">RIF / C.I.:</span> {(doc.client_rif || '').split(',')[0].trim() || 'N/A'}
             </div>
             <div>
               <span className="font-semibold text-slate-700">Teléfono:</span> {doc.client_phone || 'N/A'}

@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       d.*,
       c.name as client_name,
       c.business_name as client_business_name,
-      COALESCE(d.client_rif, c.rif) as client_rif,
+      COALESCE(NULLIF(d.client_rif, ''), c.rif) as client_rif,
       c.phone as client_phone,
       c.address as client_address
     FROM documents d
@@ -290,7 +290,7 @@ export async function POST(req: Request) {
     );
 
     const created = db.prepare(`
-      SELECT d.*, c.name as client_name, c.business_name as client_business_name, c.rif as client_rif, c.phone as client_phone, c.address as client_address
+      SELECT d.*, c.name as client_name, c.business_name as client_business_name, COALESCE(NULLIF(d.client_rif, ''), c.rif) as client_rif, c.phone as client_phone, c.address as client_address
       FROM documents d
       JOIN clients c ON d.client_id = c.id
       WHERE d.id = ?

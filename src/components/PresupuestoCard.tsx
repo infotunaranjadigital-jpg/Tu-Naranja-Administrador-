@@ -40,7 +40,12 @@ export default function PresupuestoCard({
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = ' ';
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   // Determinar si está vigente o vencido
@@ -278,7 +283,7 @@ ${publicUrl}
                 {doc.client_rif && (
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-slate-700">RIF / C.I.:</span>
-                    <span className="font-mono">{doc.client_rif}</span>
+                    <span className="font-mono">{(doc.client_rif || '').split(',')[0].trim()}</span>
                   </div>
                 )}
                 {doc.client_phone && (

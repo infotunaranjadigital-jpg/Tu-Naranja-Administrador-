@@ -14,7 +14,7 @@ export async function GET(
       d.*,
       c.name as client_name,
       c.business_name as client_business_name,
-      c.rif as client_rif,
+      COALESCE(NULLIF(d.client_rif, ''), c.rif) as client_rif,
       c.phone as client_phone,
       c.email as client_email,
       c.address as client_address
@@ -62,6 +62,7 @@ export async function PATCH(
     const notes = body.notes ?? existing.notes;
     const totalAmountCurrency = body.total_amount_currency ?? existing.total_amount_currency;
     const totalBsApplied = body.total_bs_applied ?? existing.total_bs_applied;
+    const clientRif = body.client_rif !== undefined ? body.client_rif : existing.client_rif;
 
     const stmt = db.prepare(`
       UPDATE documents SET
@@ -75,11 +76,12 @@ export async function PATCH(
         items_json = ?,
         notes = ?,
         total_amount_currency = ?,
-        total_bs_applied = ?
+        total_bs_applied = ?,
+        client_rif = ?
       WHERE id = ?
     `);
 
-    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, docNumber, controlNumber, itemsJson, notes, totalAmountCurrency, totalBsApplied, id);
+    stmt.run(paymentStatus, paymentMethod, paymentReference, status, paidAt, docNumber, controlNumber, itemsJson, notes, totalAmountCurrency, totalBsApplied, clientRif, id);
 
     // Si se actualizó el doc_number de una forma libre, sincronizar la secuencia para las siguientes facturas
     if (body.doc_number && existing.doc_type === 'FORMA_LIBRE') {

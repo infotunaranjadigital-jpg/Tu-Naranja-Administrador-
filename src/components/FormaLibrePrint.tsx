@@ -15,13 +15,43 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
   const [offsetY, setOffsetY] = useState<number>(0);
   const [showGuide, setShowGuide] = useState<boolean>(false);
 
-  // Estados editables de numeracion
+  // Estados editables de numeracion y RIF
   const [currentDocNumber, setCurrentDocNumber] = useState<string | number>(doc.doc_number || '');
   const [currentControlNumber, setCurrentControlNumber] = useState<string>(doc.control_number || '');
   const [isEditingNumbers, setIsEditingNumbers] = useState<boolean>(false);
   const [inputDocNumber, setInputDocNumber] = useState<string>(doc.doc_number?.toString() || '300');
   const [inputControlNumber, setInputControlNumber] = useState<string>(doc.control_number || '');
   const [isSavingNumbers, setIsSavingNumbers] = useState<boolean>(false);
+
+  // Manejo de RIFs (por si el cliente tiene múltiples RIFs asociados)
+  const candidateRifs: string[] = Array.from(new Set([
+    ...(doc.client_rif ? doc.client_rif.split(',') : []),
+    ...(doc.client?.rif ? doc.client.rif.split(',') : [])
+  ]))
+    .map((r: string) => r.trim())
+    .filter(Boolean);
+
+  const initialRif = candidateRifs.find((r: string) => r === doc.client_rif?.trim())
+    || candidateRifs[0]
+    || (doc.client_rif ? doc.client_rif.split(',')[0].trim() : '');
+
+  const [currentRif, setCurrentRif] = useState<string>(initialRif);
+  const [inputRif, setInputRif] = useState<string>(initialRif);
+
+  const handleSelectRif = async (rif: string) => {
+    const clean = rif.trim();
+    setCurrentRif(clean);
+    setInputRif(clean);
+    try {
+      await fetch(`/api/documents/${doc.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_rif: clean })
+      });
+    } catch (err) {
+      console.error('Error saving selected RIF:', err);
+    }
+  };
 
   const handleUpdateNumbers = async () => {
     setIsSavingNumbers(true);
@@ -31,15 +61,17 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           doc_number: parseInt(inputDocNumber, 10) || inputDocNumber,
-          control_number: inputControlNumber.trim()
+          control_number: inputControlNumber.trim(),
+          client_rif: inputRif.trim()
         })
       });
       if (res.ok) {
         setCurrentDocNumber(parseInt(inputDocNumber, 10) || inputDocNumber);
         setCurrentControlNumber(inputControlNumber.trim());
+        setCurrentRif(inputRif.trim());
         setIsEditingNumbers(false);
       } else {
-        alert('Error al actualizar los números de factura/control.');
+        alert('Error al actualizar los datos de la factura.');
       }
     } catch {
       alert('Error de conexión al actualizar.');
@@ -62,7 +94,12 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = ' ';
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   let items = [];
@@ -144,6 +181,29 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
             )
           )}
 
+          {candidateRifs.length > 1 && (
+            <div className="flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+              <span className="text-slate-400 font-medium">RIF para Imprimir:</span>
+              <div className="flex items-center gap-1">
+                {candidateRifs.map((r: string) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handleSelectRif(r)}
+                    className={`px-2 py-0.5 rounded-lg font-mono font-bold transition text-xs ${
+                      currentRif === r
+                        ? 'bg-orange-500 text-white shadow'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                    title={`Seleccionar RIF ${r} para esta factura`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => setIsEditingNumbers(true)}
             className="p-2 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold"
@@ -176,25 +236,31 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
 
       {/* Printable Sheet (Letter Size: 216mm x 279mm) */}
       <div className="max-w-[216mm] mx-auto bg-white text-black shadow-2xl rounded-sm print:shadow-none print:m-0 print:p-0 relative overflow-hidden">
-        <style jsx global>{`
-          @media print {
-            html, body {
-              background: white !important;
-              color: black !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              height: 279mm !important;
-              overflow: hidden !important;
-            }
-            .print\\:hidden {
-              display: none !important;
-            }
-            @page {
-              size: letter;
-              margin: 0;
-            }
-          }
-        `}</style>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @page {
+                size: letter;
+                margin: 0 !important;
+              }
+              @media print {
+                html, body {
+                  background: white !important;
+                  color: black !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  height: 279mm !important;
+                  overflow: hidden !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                .print\\:hidden {
+                  display: none !important;
+                }
+              }
+            `
+          }}
+        />
 
         <div
           className="relative w-[216mm] h-[279mm] max-h-[279mm] box-border pt-[50mm] px-[15mm] pb-[10mm] text-[12px] font-sans overflow-hidden"
@@ -227,7 +293,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
             </div>
             <div className="col-span-3">
               <span className="font-bold mr-1">RIF / CI:</span>
-              <span className="font-mono font-bold">{doc.client_rif || 'No especificado'}</span>
+              <span className="font-mono font-bold">{currentRif || (doc.client_rif ? doc.client_rif.split(',')[0].trim() : 'No especificado')}</span>
             </div>
             <div className="col-span-3 text-right">
               <span className="font-bold mr-1">Telf:</span>
@@ -373,6 +439,35 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
                   onChange={(e) => setInputControlNumber(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:border-orange-500 outline-none"
                   placeholder="00-000300"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  RIF / C.I. del Cliente
+                </label>
+                {candidateRifs.length > 1 && (
+                  <div className="flex gap-1.5 mb-2">
+                    {candidateRifs.map((r: string) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setInputRif(r)}
+                        className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition ${
+                          inputRif === r ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={inputRif}
+                  onChange={(e) => setInputRif(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:border-orange-500 outline-none"
+                  placeholder="J-00000000-0"
                 />
               </div>
             </div>
