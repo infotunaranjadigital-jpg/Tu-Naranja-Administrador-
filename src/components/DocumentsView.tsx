@@ -5,6 +5,7 @@ import {
   FileText, Search, Printer, CheckCircle, Clock, 
   MessageCircle, Filter, Eye, DollarSign, X 
 } from 'lucide-react';
+import { formatDateDMY } from '@/lib/dateUtils';
 
 interface DocumentsViewProps {
   documents: any[];
@@ -184,7 +185,7 @@ export default function DocumentsView({
                       )}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap">
-                      {doc.issue_date}
+                      {formatDateDMY(doc.issue_date)}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-200">{doc.client_business_name || doc.client_name}</div>
@@ -217,12 +218,12 @@ export default function DocumentsView({
                     <td className="py-3.5 px-4 text-center">
                       {doc.doc_type === 'PRESUPUESTO' ? (
                         doc.due_date && todayStr > doc.due_date ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full" title={`Venció el ${doc.due_date}`}>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full" title={`Venció el ${formatDateDMY(doc.due_date)}`}>
                             <Clock className="w-3 h-3" />
                             Vencido
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full" title={`Válido hasta ${doc.due_date}`}>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full" title={`Válido hasta ${formatDateDMY(doc.due_date)}`}>
                             <CheckCircle className="w-3 h-3" />
                             Vigente (3d)
                           </span>

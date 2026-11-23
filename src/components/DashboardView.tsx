@@ -7,6 +7,7 @@ import {
   LayoutGrid, List, Search, Sparkles, Flame, ShieldAlert,
   Handshake, Package, CreditCard, Building2
 } from 'lucide-react';
+import { formatDateDMY } from '@/lib/dateUtils';
 
 interface DashboardViewProps {
   clients: any[];
@@ -585,7 +586,7 @@ export default function DashboardView({
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
                         <span>{d.doc_type === 'FORMA_LIBRE' ? `Factura #${d.doc_number}` : `Recibo #${d.doc_number}`}</span>
-                        <span>{d.issue_date}</span>
+                        <span>{formatDateDMY(d.issue_date)}</span>
                       </div>
                     </div>
 

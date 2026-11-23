@@ -6,6 +6,7 @@ import {
   Handshake, MessageCircle, ArrowUpRight, Users, 
   CreditCard, Calendar, ShieldCheck, ChevronRight
 } from 'lucide-react';
+import { formatDateDMY } from '@/lib/dateUtils';
 
 interface AccountsReceivablePayableModalProps {
   isOpen: boolean;
@@ -193,7 +194,7 @@ export default function AccountsReceivablePayableModal({
                             </span>
                           </div>
                           <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
-                            <span>Emisión: <strong className="text-slate-300 font-mono">{d.issue_date}</strong></span>
+                            <span>Emisión: <strong className="text-slate-300 font-mono">{formatDateDMY(d.issue_date)}</strong></span>
                             <span>•</span>
                             <span>Tasa: <strong className="text-amber-400">{d.rate_type_applied}</strong></span>
                           </div>

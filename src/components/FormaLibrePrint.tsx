@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Printer, Settings2, Eye, EyeOff, ArrowLeft, Download, CheckCircle } from 'lucide-react';
+import { formatDateDMY } from '@/lib/dateUtils';
 
 interface FormaLibrePrintProps {
   document: any;
@@ -281,7 +282,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
           <div className="flex justify-end pr-6 mb-2">
             <div className="font-semibold text-right">
               <span className="text-gray-600 mr-2">Fecha De Emisión:</span>
-              <span className="font-mono font-bold text-[13px]">{doc.issue_date}</span>
+              <span className="font-mono font-bold text-[13px]">{formatDateDMY(doc.issue_date)}</span>
             </div>
           </div>
 

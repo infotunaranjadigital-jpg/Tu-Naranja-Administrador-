@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Printer, ArrowLeft, MessageCircle, CheckCircle, Copy } from 'lucide-react';
+import { formatDateDMY } from '@/lib/dateUtils';
 
 interface ReceiptPrintProps {
   document: any;
@@ -34,7 +35,7 @@ export default function ReceiptPrint({ document: doc, onBack, onMarkPaid }: Rece
 
   const generateWhatsAppMessage = () => {
     const lines = items.map((it: any) => `• ${it.description}: Bs. ${formatBs(it.amount * (doc.currency === 'USD' ? doc.applied_rate : 1))}`).join('\n');
-    const msg = `Hola ${doc.client_name}, te adjuntamos el *Recibo Digital N.º ${doc.doc_number}* de *Tu Naranja Digital* correspondiente a ${doc.issue_date}:
+    const msg = `Hola ${doc.client_name}, te adjuntamos el *Recibo Digital N.º ${doc.doc_number}* de *Tu Naranja Digital* correspondiente a ${formatDateDMY(doc.issue_date)}:
 
 ${lines}
 
@@ -159,7 +160,7 @@ Teléfono: 0414-154 42 52
               N.º {doc.doc_number?.toString().padStart(4, '0')}
             </div>
             <div className="text-xs text-slate-500 mt-1">
-              <span className="font-semibold text-slate-700">Fecha:</span> {doc.issue_date}
+              <span className="font-semibold text-slate-700">Fecha:</span> {formatDateDMY(doc.issue_date)}
             </div>
           </div>
         </div>
