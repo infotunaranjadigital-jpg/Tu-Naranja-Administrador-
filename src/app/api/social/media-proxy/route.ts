@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 const TRELLO_API_KEY = process.env.TRELLO_API_KEY || '80743f45d7ed829f27e4d43d230a7ddf';
 const TRELLO_TOKEN = process.env.TRELLO_TOKEN || 'ATTAcafd3daa843d855b894b21fed413734d19e05a435c9f22913c80389aac2dda519D84274C';
 
