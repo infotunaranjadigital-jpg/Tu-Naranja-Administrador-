@@ -116,7 +116,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 sm:p-8 text-slate-100">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-8 text-slate-100 print:bg-transparent print:p-0 print:m-0 print:min-h-0 print:text-black">
       {/* Top Controls - Hidden during print */}
       <div className="max-w-4xl mx-auto mb-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
@@ -236,24 +236,26 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
       </div>
 
       {/* Printable Sheet (Letter Size: 216mm x 279mm) */}
-      <div className="max-w-[216mm] mx-auto bg-white text-black shadow-2xl rounded-sm print:shadow-none print:m-0 print:p-0 relative overflow-hidden">
+      <div className="max-w-[216mm] mx-auto bg-white text-black shadow-2xl rounded-sm print:bg-transparent print:shadow-none print:m-0 print:p-0 print:border-none relative overflow-hidden">
         <style
           dangerouslySetInnerHTML={{
             __html: `
               @page {
                 size: letter;
-                margin: 0 !important;
+                margin: 0;
               }
               @media print {
-                html, body {
-                  background: white !important;
+                html, body, #__next, div {
+                  background: transparent !important;
+                  background-color: transparent !important;
+                  box-shadow: none !important;
+                }
+                body {
                   color: black !important;
                   margin: 0 !important;
                   padding: 0 !important;
-                  height: 279mm !important;
-                  overflow: hidden !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
+                  -webkit-print-color-adjust: economy !important;
+                  print-color-adjust: economy !important;
                 }
                 .print\\:hidden {
                   display: none !important;
@@ -264,7 +266,7 @@ export default function FormaLibrePrint({ document: doc, onBack, onMarkPaid }: F
         />
 
         <div
-          className="relative w-[216mm] h-[279mm] max-h-[279mm] box-border pt-[50mm] px-[15mm] pb-[10mm] text-[12px] font-sans overflow-hidden"
+          className="relative w-[216mm] h-[279mm] max-h-[279mm] box-border pt-[50mm] px-[15mm] pb-[10mm] text-[12px] font-sans overflow-hidden print:bg-transparent print:border-none"
           style={{
             transform: `translate(${offsetX}mm, ${offsetY}mm)`,
             backgroundColor: showGuide ? '#fffdf7' : 'transparent',

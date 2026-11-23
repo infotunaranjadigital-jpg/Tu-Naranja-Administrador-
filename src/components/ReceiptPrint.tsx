@@ -59,7 +59,7 @@ Teléfono: 0414-154 42 52
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 sm:p-8 text-slate-100">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-8 text-slate-100 print:bg-white print:p-0 print:m-0 print:min-h-0">
       {/* Top Controls */}
       <div className="max-w-3xl mx-auto mb-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
@@ -130,9 +130,7 @@ Teléfono: 0414-154 42 52
                   background: white !important;
                   color: black !important;
                   margin: 0 !important;
-                  padding: 10mm !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
+                  padding: 0 !important;
                 }
                 .print\\:hidden {
                   display: none !important;

@@ -108,7 +108,7 @@ ${publicUrl}
   const docNumFormatted = `PP-${(doc.doc_number || 101).toString().padStart(4, '0')}`;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 lg:p-8 print:bg-white print:p-0 print:m-0 print:min-h-0">
       {/* Action Bar (No se imprime) */}
       <div className="max-w-4xl mx-auto mb-6 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-3">
